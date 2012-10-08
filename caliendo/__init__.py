@@ -1,8 +1,10 @@
 import random as r_random
+import pickle
+from facade import CallDescriptor
 import sys
 import os
 
-USE_CALIENDO = False
+USE_CALIENDO = True 
 dbname       = 'caliendo.db'
 rdbms        = 'sqllite'
 user         = 'root'
@@ -15,11 +17,18 @@ if 'DJANGO_SETTINGS_MODULE' in os.environ:
         CALIENDO_CONFIG = settings.CALIENDO_CONFIG
         USE_CALIENDO    = CALIENDO_CONFIG[ 'use_caliendo' ]
     except:
-        sys.stderr.write( "CAUGHT EXCEPTION WHEN ATTEMPTING TO IMPORT CALIENDO\n")
-
-sys.stderr.write( "CONFIG:\n" )
-sys.stderr.write( str( CALIENDO_CONFIG ) + "\n" )
-
+      sys.stderr.write( "CAUGHT EXCEPTION WHEN ATTEMPTING TO IMPORT CALIENDO. Using default settings: \n")
+      CALIENDO_CONFIG = {
+          'database': {
+            'host'    : host,
+            'rdbms'   : rdbms,
+            'dbname'  : dbname,
+            'user'    : user,
+            'password': password
+          }
+      }
+      sys.stderr.write( str( CALIENDO_CONFIG ) + "\n" )
+      
 
 def serialize_args( args ):
     """
@@ -56,7 +65,7 @@ def fetch_call_descriptor( hash ):
     res = select( hash )
     if res:
       hash, methodname, returnval, args = res[ 0 ]
-      return CallDescriptor( hash, methodname, pickle.loads( returnval ), pickle.loads( args ) )
+      return CallDescriptor( hash, methodname, pickle.loads( str( returnval ) ), pickle.loads( str( args ) ) )
     return None
 
 def random(*args):

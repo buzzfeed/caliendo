@@ -48,7 +48,7 @@ class CallDescriptor:
         sys.stderr.write( "That apparently worked...\n" )
     except:
         try:
-            sys.stderr.write( "CALLING insert( )...\n" )
+            sys.stderr.write( "CALLING update( )...\n" )
             caliendo.update( v )
             sys.stderr.write( "That apparently worked...\n" )
         except:

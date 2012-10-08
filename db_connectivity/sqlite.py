@@ -20,18 +20,24 @@ def insert( args ):
         cur.execute( sql, args )
     except:
         sys.stderr.write( "FAILED TO EXECUTE QUERY!\n" )
-    sys.stderr.write( "INSERTED INTO SQLLITE DB: " + sql + "\n" )
-    sys.stderr.write( str( args ) )
+        con.close( )
+        raise Exception( "Failed to insert to db\n" )
+
     try:
         sys.stderr.write( "COMMIT:" + str( con.commit() ) + "\n" )
         sys.stderr.write( "SUCCESSFULLY COMMITTED QUERY\n" )
     except:
         sys.stderr.write( "FAILED TO EXECUTE COMMIT!\n" )
+        con.close( )
+        raise Exception( "Failed to execute commit\n" )
+
     con.close()
     sys.stderr.write( "SUCCESSFULLY CLOSED CONNECTION\n" )
 
 def update( args ):
+    sys.stderr.write( "UPDATING DATABASE WITH\n" )
     sql = "UPDATE test_io SET methodname=:methodname, args=:args, returnval=:returnval WHERE hash=:hash;"
+    sys.stderr.write( str( sql ) + "\n" )
     con = connect()
     if not con:
         raise Exception( "Caliendo could not connect to the database" )
