@@ -12,21 +12,21 @@ password     = None
 host         = 'localhost'
 
 if 'DJANGO_SETTINGS_MODULE' in os.environ:
-    settings = __import__( os.environ[ 'DJANGO_SETTINGS_MODULE' ], globals(), locals(), ['CALIENDO_CONFIG'], -1 )
+    settings = __import__( os.environ[ 'DJANGO_SETTINGS_MODULE' ], globals(), locals(), ['DATABASES'], -1 )
 
 try:
-    CALIENDO_CONFIG = settings.CALIENDO_CONFIG
-    USE_CALIENDO    = CALIENDO_CONFIG[ 'use_caliendo' ]
+    CALIENDO_CONFIG = settings.DATABASES[ 'default' ]
+    USE_CALIENDO    = True 
 except:
     CALIENDO_CONFIG = {
-        'database': {
-            'host'    : host,
-            'rdbms'   : rdbms,
-            'dbname'  : dbname,
-            'user'    : user,
-            'password': password
-        }
+        'HOST'     : host,
+        'ENGINE'   : rdbms,
+        'NAME'     : dbname,
+        'USER'     : user,
+        'PASSWORD' : password
     }
+
+CALIENDO_CONFIG[ 'HOST' ] = CALIENDO_CONFIG[ 'HOST' ] or 'localhost'
 
 def serialize_args( args ):
     """
@@ -98,20 +98,19 @@ if USE_CALIENDO:
     sys.stderr.write( "==============================================\n")
 
     # Database configuration
-    if 'database' in CALIENDO_CONFIG:
-        c = CALIENDO_CONFIG[ 'database' ]
-        if 'host' in c:
-            host     = c[ 'host' ]
-        if 'rdbms' in c:
-            rdbms    = c[ 'rdbms' ]
-        if 'dbname' in c:
-            dbname   = c[ 'dbname' ]
-        if 'user' in c:
-            user     = c[ 'user' ]
-        if 'password' in c:
-            password = c[ 'password' ]
+    c = CALIENDO_CONFIG
+    if 'HOST' in c:
+        host     = c[ 'HOST' ]
+    if 'ENGINE' in c:
+        rdbms    = c[ 'ENGINE' ]
+    if 'NAME' in c:
+        dbname   = c[ 'NAME' ]
+    if 'USER' in c:
+        user     = c[ 'USER' ]
+    if 'PASSWORD' in c:
+        password = c[ 'PASSWORD' ]
 
-    if rdbms == 'mysql':
+    if 'mysql' in rdbms:
         if dbname == 'caliendo.db':
             dbname = 'caliendo'
         from MySQLdb import connect as mysql_connect
@@ -119,6 +118,7 @@ if USE_CALIENDO:
     else:
         from sqlite3 import connect as sqllite_connect
         from db_connectivity.sqlite import *
+
 
     # If the supporting db table doesn't exist; create it.
     attempt_create( )

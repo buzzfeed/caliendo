@@ -1,6 +1,5 @@
 from caliendo.facade import CallDescriptor, Facade
 from caliendo import *
-import sqlite3
 import unittest
 import hashlib
 import sys

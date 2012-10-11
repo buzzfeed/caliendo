@@ -34,7 +34,7 @@ def update( args ):
     cur.execute( sql, args )
     con.commit()
     con.close()
-# Select works regardless
+
 def select( hash ):
     sql = "SELECT hash, methodname, returnval, args FROM test_io WHERE hash = '%s';" % str(hash)
     con = connect()
