@@ -1,9 +1,8 @@
-caliendo
-========
+
 
 # Installation
 
-`caliendo` is set up to install with pip. You can install it directly from github by running:
+`caliendo` is set up to install with `pip`. You can install it directly from github by running:
 
     pip install git+git://github.com/buzzfeed/caliendo.git#egg=caliendo
 
@@ -17,7 +16,7 @@ Alternatively if you have a copy of the source on your machine; cd to the parent
 
 1. `caliendo` will load the `DATABASES` object from the module you have set in the `DJANGO_SETTINGS_MODULE` environment variable. It will create a table called `test_io`.
 
-2. `caliendo` will either fail to load the Django settings.py module and default to creating a sqlite database called 'caliendo.db' in whatever directory it was invoked from. (Probably because your Django settings module isn't on the path) 
+2. `caliendo` will fail to load the Django settings.py module and default to creating a sqlite database called 'caliendo.db' in whatever directory it was invoked from. (Probably because your Django settings module isn't on the path) 
 
 # Importing
 
