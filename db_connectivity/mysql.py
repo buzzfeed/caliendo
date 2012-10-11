@@ -3,11 +3,6 @@ from MySQLdb import connect as mysql_connect
 import sys
 
 def connect( ):
-    sys.stderr.write( "=========================\n" )
-    sys.stderr.write( "CONNECTION PARAMS:\n" )
-    sys.stderr.write( "host: " + host + " user: " + user + " pass: " + password + " db: " + dbname )
-    sys.stderr.write( "=========================\n" )
-
     return mysql_connect( host=host, user=user, passwd=password, db=dbname )
 
 def insert( args ):

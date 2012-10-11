@@ -33,8 +33,6 @@ class CallDescriptor:
     be INSERT'd.
     """
 
-    sys.stderr.write( "ATTEMPTING TO SAVE CallDescriptor!\n" )
-
     v = {
       'hash'      : self.hash,
       'methodname': self.methodname,
@@ -43,14 +41,10 @@ class CallDescriptor:
     }
     
     try:
-        sys.stderr.write( "CALLING insert( )...\n" )
         caliendo.insert( v )
-        sys.stderr.write( "That apparently worked...\n" )
     except:
         try:
-            sys.stderr.write( "CALLING update( )...\n" )
             caliendo.update( v )
-            sys.stderr.write( "That apparently worked...\n" )
         except:
             raise Exception( "Error saving Caliendo CallDescriptor to the database.")
     
@@ -84,10 +78,8 @@ class Facade( dict ):
       call_hash         = sha1(str( call_counter[ 0 ] ) + str(frozenset(caliendo.serialize_args(args))) + method_name ).hexdigest()
       cd                = caliendo.fetch_call_descriptor( call_hash )
       if cd:
-        sys.stderr.write( "Fetching from " + caliendo.rdbms + "!\n" )
         return cd.returnval
       else:
-        sys.stderr.write( "Fetching from DFP!\n" )
         cd = CallDescriptor( hash=call_hash, method=method_name, returnval=(self['methods'][method_name])(*args), args=args )
         cd.save()
         return cd.returnval

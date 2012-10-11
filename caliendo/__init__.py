@@ -13,22 +13,20 @@ host         = 'localhost'
 
 if 'DJANGO_SETTINGS_MODULE' in os.environ:
     settings = __import__( os.environ[ 'DJANGO_SETTINGS_MODULE' ], globals(), locals(), ['CALIENDO_CONFIG'], -1 )
-    try:
-        CALIENDO_CONFIG = settings.CALIENDO_CONFIG
-        USE_CALIENDO    = CALIENDO_CONFIG[ 'use_caliendo' ]
-    except:
-      sys.stderr.write( "CAUGHT EXCEPTION WHEN ATTEMPTING TO IMPORT CALIENDO. Using default settings: \n")
-      CALIENDO_CONFIG = {
-          'database': {
+
+try:
+    CALIENDO_CONFIG = settings.CALIENDO_CONFIG
+    USE_CALIENDO    = CALIENDO_CONFIG[ 'use_caliendo' ]
+except:
+    CALIENDO_CONFIG = {
+        'database': {
             'host'    : host,
             'rdbms'   : rdbms,
             'dbname'  : dbname,
             'user'    : user,
             'password': password
-          }
-      }
-      sys.stderr.write( str( CALIENDO_CONFIG ) + "\n" )
-      
+        }
+    }
 
 def serialize_args( args ):
     """
@@ -48,7 +46,6 @@ def serialize_args( args ):
             try:
                 arg_list.append( str( frozenset( arg.items( ) ) ) )
             except:
-                sys.stderr.write( "Could not serialize argument: " + str( arg ) + "\n" )
                 arg_list.append( None )
         else:
             arg_list.append( str( arg ) )
