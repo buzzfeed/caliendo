@@ -1,5 +1,5 @@
 import random as r_random
-import pickle
+import cPickle as pickle
 from facade import CallDescriptor
 import sys
 import os

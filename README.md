@@ -42,3 +42,5 @@ Once you have an instance of an API running under a `caliendo` facade you should
 2. `caliendo` doesn't support a large level of nested objects in arguments or return values. If you start getting unexpected results this may be the problem. Better nesting is to come.
 
 3. If you alternate between calls to the `caliendo` `Facade` instance of an API and the API itself you will probably see unexpected results. `caliendo` maintains the state of the API by maintaining a reference to the API internally.
+
+4. If you have a class inheriting from `dict` you'll need to define a `__getstate__` and a `__setstate__` method. Described: [http://stackoverflow.com/questions/5247250/why-does-pickle-getstate-accept-as-a-return-value-the-very-instance-it-requi]

@@ -1,6 +1,6 @@
 from hashlib import sha1
 import caliendo
-import pickle
+import cPickle as pickle
 import sys
 
 class CallDescriptor:
@@ -9,7 +9,7 @@ class CallDescriptor:
   a hash key for lookups, the arguments, and return value. This way the call can
   be handled cleanly and referenced later.
   """
-  def __init__( self, hash=None, method=None, returnval=None, args=None ):
+  def __init__( self, hash=None, method=None, returnval=None, args=None, kwargs=None ):
     """
     CallDescriptor initialiser. 
     
@@ -23,6 +23,7 @@ class CallDescriptor:
     self.methodname = method
     self.returnval  = returnval
     self.args       = args
+    self.kwargs     = kwargs
 
   def save( self ):
     """
@@ -37,6 +38,7 @@ class CallDescriptor:
       'hash'      : self.hash,
       'methodname': self.methodname,
       'args'      : pickle.dumps( self.args ),
+      'kwargs'    : pickle.dumps( self.kwargs ),
       'returnval' : pickle.dumps( self.returnval )
     }
     
@@ -73,18 +75,19 @@ class Facade( dict ):
 
     :rtype: lambda function.
     """
-    def append_and_return( self, call_counter, *args ):
+    def append_and_return( self, call_counter, *args, **kwargs ):
       call_counter[ 0 ] = call_counter[ 0 ] + 1
-      call_hash         = sha1(str( call_counter[ 0 ] ) + str(frozenset(caliendo.serialize_args(args))) + method_name ).hexdigest()
+      call_hash         = sha1(str( call_counter[ 0 ] ) + str(frozenset(caliendo.serialize_args(args))) + str(frozenset(caliendo.serialize_args(kwargs))) + method_name ).hexdigest()
       cd                = caliendo.fetch_call_descriptor( call_hash )
+
       if cd:
         return cd.returnval
       else:
-        cd = CallDescriptor( hash=call_hash, method=method_name, returnval=(self['methods'][method_name])(*args), args=args )
+        cd = CallDescriptor( hash=call_hash, method=method_name, returnval=(self['methods'][method_name])(*args, **kwargs), args=args, kwargs=kwargs )
         cd.save()
         return cd.returnval
 
-    return lambda *args: append_and_return( self, self.call_counter, *args )
+    return lambda *args, **kwargs: append_and_return( self, self.call_counter, *args, **kwargs )
 
   def __getattr__( self, key ):
     if key not in self:
