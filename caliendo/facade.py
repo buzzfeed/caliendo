@@ -83,7 +83,12 @@ class Facade( dict ):
       if cd:
         return cd.returnval
       else:
-        cd = CallDescriptor( hash=call_hash, method=method_name, returnval=(self['methods'][method_name])(*args, **kwargs), args=args, kwargs=kwargs )
+        returnval = (self['methods'][method_name])(*args, **kwargs) 
+        cd = CallDescriptor( hash      = call_hash, 
+                             method    = method_name, 
+                             returnval = returnval,
+                             args      = args, 
+                             kwargs    = kwargs )
         cd.save()
         return cd.returnval
 

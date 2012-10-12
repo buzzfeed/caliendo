@@ -5,6 +5,7 @@ import sys
 import os
 
 USE_CALIENDO = True 
+randoms      = 0
 dbname       = 'caliendo.db'
 rdbms        = 'sqllite'
 user         = 'root'
@@ -66,8 +67,10 @@ def fetch_call_descriptor( hash ):
     return None
 
 def random(*args):
+    global randoms
     if USE_CALIENDO:
-        return 0.25 # Chosen by fair roll of dice.
+        randoms = randoms + 1
+        return randoms + 0.38# Chosen by fair roll of dice.
     else:
         return r_random.random(*args)
 
