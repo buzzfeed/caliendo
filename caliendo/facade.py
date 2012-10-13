@@ -52,8 +52,7 @@ class CallDescriptor:
     
     return self # Supports chaining
 
-
-class Facade( dict ):
+class Facade( object ):
   """
   The Caliendo facade. Extends the dict object. Pass the initializer an object
   and the Facade will wrap all the public methods. Built-in methods
@@ -83,7 +82,7 @@ class Facade( dict ):
       if cd:
         return cd.returnval
       else:
-        returnval = (self['methods'][method_name])(*args, **kwargs) 
+        returnval = (self.__store__['methods'][method_name])(*args, **kwargs) 
         cd = CallDescriptor( hash      = call_hash, 
                              method    = method_name, 
                              returnval = returnval,
@@ -95,22 +94,23 @@ class Facade( dict ):
     return lambda *args, **kwargs: append_and_return( self, self.call_counter, *args, **kwargs )
 
   def __getattr__( self, key ):
-    if key not in self:
+    if key not in self.__store__:
         raise Exception( "Key has not been set in the facade! Method is undefined." )
-    return self[ key ]
+    return self.__store__[ key ]
 
   def __init__( self, o ):
-
-    self[ 'methods' ] = {}
+    self.__store__ = dict()
+    store = self.__store__
+    store[ 'methods' ] = {}
 
     for method_name in dir( o ):
       if '__' not in method_name:
         if caliendo.USE_CALIENDO:
-            self['methods'][method_name] = eval( "o." + method_name )
-            ret_val                      = self.wrap( method_name )
-            self[ method_name ]          = ret_val
+            self.__store__['methods'][method_name] = eval( "o." + method_name )
+            ret_val                              = self.wrap( method_name )
+            self.__store__[ method_name ]          = ret_val
         else:
-            self[ method_name ]          = eval( "o." + method_name )
+            self.__store__[ method_name ]          = eval( "o." + method_name )
 
 if __name__ == '__main__':
   cd = CallDescriptor( hash=sha1("test").hexdigest(), method='someMethod', returnval='Some Value', args='Some Arguments' )
