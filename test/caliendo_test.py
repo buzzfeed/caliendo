@@ -6,8 +6,9 @@ import sys
 
 class CallOnceEver:
     __die = 0
-    def update():
-        if __die:
+    def update(self):
+        print "self.__die"
+        if self.__die:
             raise Exception("NOPE!")
         else:
             self.__die = 1
@@ -119,13 +120,13 @@ class  CaliendoTestCase(unittest.TestCase):
 
     def test_update(self):
         o = CallOnceEver()
-        o_p = Facade( o )
-        o_p = Facade( o )
-        o_p = Facade( o )
+        o_p1 = Facade( o )
+        o_p2 = Facade( o )
+        o_p3 = Facade( o )
 
-        self.assertEquals( o.update(), 1 )
-        self.assertEquals( o.update(), 1 )
-        self.assertEquals( o.update(), 1 )
+        self.assertEquals( o_p1.update(), 1 )
+        self.assertEquals( o_p2.update(), 1 )
+        self.assertEquals( o_p3.update(), 1 )
 
 if __name__ == '__main__':
     unittest.main()
