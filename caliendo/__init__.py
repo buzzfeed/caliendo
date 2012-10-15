@@ -96,10 +96,6 @@ def attempt_create( ):
 
 
 if USE_CALIENDO:
-    sys.stderr.write( "==============================================\n")
-    sys.stderr.write( ">>>>>>>>>>>>>>> USING CALIENDO <<<<<<<<<<<<<<<\n")
-    sys.stderr.write( "==============================================\n")
-
     # Database configuration
     c = CALIENDO_CONFIG
     if 'HOST' in c:
@@ -125,8 +121,3 @@ if USE_CALIENDO:
 
     # If the supporting db table doesn't exist; create it.
     attempt_create( )
-else:
-    sys.stderr.write( "==================================================\n")
-    sys.stderr.write( ">>>>>>>>>>>>>>> NOT USING CALIENDO <<<<<<<<<<<<<<<\n")
-    sys.stderr.write( "==================================================\n")
-

@@ -4,12 +4,23 @@ import unittest
 import hashlib
 import sys
 
+class CallOnceEver:
+    __die = 0
+    def update():
+        if __die:
+            raise Exception("NOPE!")
+        else:
+            self.__die = 1
+            return 1
+
 class TestC:
     __private_var = 0
     def methoda(self):
         return "a"
     def methodb(self):
         return "b"
+    def update(self):
+        return "c"
     def increment(self):
         self.__private_var = self.__private_var + 1
         return self.__private_var
@@ -105,6 +116,16 @@ class  CaliendoTestCase(unittest.TestCase):
         self.assertEquals( mtc_f.increment( ), 2 ) 
         self.assertEquals( mtc_f.increment( ), 3 ) 
         self.assertEquals( mtc_f.increment( ), 4 ) 
+
+    def test_update(self):
+        o = CallOnceEver()
+        o_p = Facade( o )
+        o_p = Facade( o )
+        o_p = Facade( o )
+
+        self.assertEquals( o.update(), 1 )
+        self.assertEquals( o.update(), 1 )
+        self.assertEquals( o.update(), 1 )
 
 if __name__ == '__main__':
     unittest.main()
