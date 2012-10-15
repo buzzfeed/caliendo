@@ -7,7 +7,6 @@ import sys
 class CallOnceEver:
     __die = 0
     def update(self):
-        print "self.__die"
         if self.__die:
             raise Exception("NOPE!")
         else:
