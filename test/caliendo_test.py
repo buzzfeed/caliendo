@@ -119,13 +119,23 @@ class  CaliendoTestCase(unittest.TestCase):
 
     def test_update(self):
         o = CallOnceEver()
-        o_p1 = Facade( o )
-        o_p2 = Facade( o )
-        o_p3 = Facade( o )
+        test = self
 
-        self.assertEquals( o_p1.update(), 1 )
-        self.assertEquals( o_p2.update(), 1 )
-        self.assertEquals( o_p3.update(), 1 )
+        def run_one():
+            op = Facade( o )
+            test.assertEquals( op.update(), 1 )
+
+        def run_two():
+            op = Facade( o )
+            test.assertEquals( op.update(), 1 )
+
+        def run_three():
+            op = Facade( o )
+            test.assertEquals( op.update(), 1 )
+
+        run_one()
+        run_two()
+        run_three()
 
 if __name__ == '__main__':
     unittest.main()
