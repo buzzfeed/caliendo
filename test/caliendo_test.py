@@ -1,8 +1,10 @@
 from caliendo.facade import CallDescriptor, Facade
 from caliendo import *
+import tempfile
 import unittest
 import hashlib
 import sys
+import os
 
 class CallOnceEver:
     __die = 0
@@ -121,21 +123,37 @@ class  CaliendoTestCase(unittest.TestCase):
         o = CallOnceEver()
         test = self
 
-        def run_one():
-            op = Facade( o )
-            test.assertEquals( op.update(), 1 )
 
-        def run_two():
+        def test(fh):
             op = Facade( o )
-            test.assertEquals( op.update(), 1 )
+            fh.write("%s" % str(op.update() == 1))
+            fh.close()
+            os._exit(0)
 
-        def run_three():
-            op = Facade( o )
-            test.assertEquals( op.update(), 1 )
+        outputs = [ tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False) ]
 
-        run_one()
-        run_two()
-        run_three()
+        for output in outputs:
+            pid = os.fork()
+            if pid:
+                os.waitpid(pid, 0)
+            else:
+                test(output)
+
+        expected = ['True', 'True', 'True']
+        result   = []
+
+        for output in outputs:
+            output.close()
+
+            fh = open(output.name)
+            result.append(fh.read())
+            fh.close()
+
+            os.remove(output.name)
+
+        self.assertEqual(result, expected)
 
 if __name__ == '__main__':
     unittest.main()
