@@ -1,23 +1,30 @@
 import random as r_random
 import cPickle as pickle
 from facade import CallDescriptor
+import time
 import sys
 import os
 
-USE_CALIENDO = True 
-randoms      = 0
-dbname       = 'caliendo.db'
-rdbms        = 'sqllite'
-user         = 'root'
-password     = None
-host         = 'localhost'
+USE_CALIENDO  = True
+CALIENDO_SEED = 0
+randoms       = CALIENDO_SEED
+times         = CALIENDO_SEED
+dbname        = 'caliendo.db'
+rdbms         = 'sqllite'
+user          = 'root'
+password      = None
+host          = 'localhost'
 
 if 'DJANGO_SETTINGS_MODULE' in os.environ:
     settings = __import__( os.environ[ 'DJANGO_SETTINGS_MODULE' ], globals(), locals(), ['DATABASES'], -1 )
 
 try:
     CALIENDO_CONFIG = settings.DATABASES[ 'default' ]
-    USE_CALIENDO    = True 
+    if 'caliendo_seed' in settings.DATABASES:
+        CALIENDO_SEED = settings.DATABASES[ 'caliendo_seed' ]
+        randoms       = CALIENDO_SEED
+        times         = CALIENDO_SEED
+    USE_CALIENDO = True
 except:
     CALIENDO_CONFIG = {
         'HOST'     : host,
@@ -73,6 +80,14 @@ def random(*args):
         return randoms + 0.38# Chosen by fair roll of dice.
     else:
         return r_random.random(*args)
+
+def time(*args):
+    global times
+    if USE_CALIENDO:
+        times = times + 1
+        return times
+    else:
+        return time.time()
 
 def attempt_create( ):
     create = """

@@ -1,5 +1,6 @@
 from hashlib import sha1
 import caliendo
+import inspect
 import cPickle as pickle
 import sys
 
@@ -95,7 +96,7 @@ class Facade( object ):
 
   def __getattr__( self, key ):
     if key not in self.__store__:
-        raise Exception( "Key has not been set in the facade! Method is undefined." )
+        raise Exception( "Key, " + str( key ) + " has not been set in the facade! Method is undefined." )
     return self.__store__[ key ]
 
   def __init__( self, o ):
@@ -103,14 +104,15 @@ class Facade( object ):
     store = self.__store__
     store[ 'methods' ] = {}
 
-    for method_name in dir( o ):
-      if '__' not in method_name:
+    for method_name, member in inspect.getmembers( o ):
+      #if '__' not in method_name:
         if caliendo.USE_CALIENDO:
-            self.__store__['methods'][method_name] = eval( "o." + method_name )
-            ret_val                              = self.wrap( method_name )
-            self.__store__[ method_name ]          = ret_val
+            if inspect.ismethod(member) or inspect.isfunction(member) or inspect.isclass(member):
+                self.__store__['methods'][method_name] = eval( "o." + method_name )
+                ret_val                                = self.wrap( method_name )
+                self.__store__[ method_name ]          = ret_val
         else:
-            self.__store__[ method_name ]          = eval( "o." + method_name )
+            self.__store__[ method_name ]              = eval( "o." + method_name )
 
 if __name__ == '__main__':
   cd = CallDescriptor( hash=sha1("test").hexdigest(), method='someMethod', returnval='Some Value', args='Some Arguments' )
