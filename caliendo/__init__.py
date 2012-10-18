@@ -16,14 +16,10 @@ password      = None
 host          = 'localhost'
 
 if 'DJANGO_SETTINGS_MODULE' in os.environ:
-    settings = __import__( os.environ[ 'DJANGO_SETTINGS_MODULE' ], globals(), locals(), ['DATABASES'], -1 )
+    settings = __import__( os.environ[ 'DJANGO_SETTINGS_MODULE' ], globals(), locals(), ['DATABASES', 'CALIENDO_SEED' ], -1 )
 
 try:
     CALIENDO_CONFIG = settings.DATABASES[ 'default' ]
-    if 'caliendo_seed' in settings.DATABASES:
-        CALIENDO_SEED = settings.DATABASES[ 'caliendo_seed' ]
-        randoms       = CALIENDO_SEED
-        times         = CALIENDO_SEED
     USE_CALIENDO = True
 except:
     CALIENDO_CONFIG = {
@@ -33,6 +29,13 @@ except:
         'USER'     : user,
         'PASSWORD' : password
     }
+
+try: 
+    CALIENDO_SEED = settings.CALIENDO_SEED
+    randoms       = CALIENDO_SEED
+    times         = CALIENDO_SEED
+except:
+    pass
 
 CALIENDO_CONFIG[ 'HOST' ] = CALIENDO_CONFIG[ 'HOST' ] or 'localhost'
 
