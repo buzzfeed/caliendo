@@ -1,7 +1,7 @@
 import random as r_random
 import cPickle as pickle
 from facade import CallDescriptor
-import time
+import time as t_time
 import sys
 import os
 
@@ -16,11 +16,11 @@ password      = None
 host          = 'localhost'
 
 if 'DJANGO_SETTINGS_MODULE' in os.environ:
-    settings = __import__( os.environ[ 'DJANGO_SETTINGS_MODULE' ], globals(), locals(), ['DATABASES', 'CALIENDO_SEED' ], -1 )
+    settings = __import__( os.environ[ 'DJANGO_SETTINGS_MODULE' ], globals(), locals(), ['DATABASES', 'CALIENDO_SEED', 'USE_CALIENDO' ], -1 )
 
 try:
     CALIENDO_CONFIG = settings.DATABASES[ 'default' ]
-    USE_CALIENDO = True
+    USE_CALIENDO = settings.USE_CALIENDO 
 except:
     CALIENDO_CONFIG = {
         'HOST'     : host,
@@ -90,7 +90,7 @@ def time(*args):
         times = times + 1
         return times
     else:
-        return time.time()
+        return t_time.time()
 
 def attempt_create( ):
     create = """
