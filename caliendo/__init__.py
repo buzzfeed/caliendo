@@ -5,7 +5,7 @@ import time as t_time
 import sys
 import os
 
-USE_CALIENDO  = True
+USE_CALIENDO  = False
 CALIENDO_SEED = t_time.time() * 1000
 
 dbname        = 'caliendo.db'
@@ -19,7 +19,8 @@ if 'DJANGO_SETTINGS_MODULE' in os.environ:
 
 try:
     CALIENDO_CONFIG = settings.DATABASES[ 'default' ]
-    USE_CALIENDO = settings.USE_CALIENDO 
+    if 'USE_CALIENDO' in dir( settings ):
+        USE_CALIENDO = settings.USE_CALIENDO 
 except:
     CALIENDO_CONFIG = {
         'HOST'     : host,

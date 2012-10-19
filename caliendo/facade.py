@@ -77,7 +77,13 @@ class Facade( object ):
     """
     def append_and_return( self, call_counter, *args, **kwargs ):
       call_counter[ 0 ] = call_counter[ 0 ] + 1
-      call_hash         = sha1(str( call_counter[ 0 ] ) + str(frozenset(caliendo.serialize_args(args))) + str(frozenset(caliendo.serialize_args(kwargs))) + method_name ).hexdigest()
+      current_frame     = inspect.currentframe()
+      trace_string      = ""
+      while current_frame.f_back:
+        trace_string = trace_string + current_frame.f_back.f_code.co_name
+
+        current_frame = current_frame.f_back 
+      call_hash         = sha1(str( call_counter[ 0 ] ) + str(frozenset(caliendo.serialize_args(args))) + str(frozenset(caliendo.serialize_args(kwargs))) + trace_string ).hexdigest()
       cd                = caliendo.fetch_call_descriptor( call_hash )
 
       if cd:
