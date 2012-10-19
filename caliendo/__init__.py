@@ -6,9 +6,8 @@ import sys
 import os
 
 USE_CALIENDO  = True
-CALIENDO_SEED = 0
-randoms       = CALIENDO_SEED
-times         = CALIENDO_SEED
+CALIENDO_SEED = t_time.time() * 1000
+
 dbname        = 'caliendo.db'
 rdbms         = 'sqllite'
 user          = 'root'
@@ -16,7 +15,7 @@ password      = None
 host          = 'localhost'
 
 if 'DJANGO_SETTINGS_MODULE' in os.environ:
-    settings = __import__( os.environ[ 'DJANGO_SETTINGS_MODULE' ], globals(), locals(), ['DATABASES', 'CALIENDO_SEED', 'USE_CALIENDO' ], -1 )
+    settings = __import__( os.environ[ 'DJANGO_SETTINGS_MODULE' ], globals(), locals(), ['DATABASES', 'USE_CALIENDO' ], -1 )
 
 try:
     CALIENDO_CONFIG = settings.DATABASES[ 'default' ]
@@ -29,13 +28,6 @@ except:
         'USER'     : user,
         'PASSWORD' : password
     }
-
-try: 
-    CALIENDO_SEED = settings.CALIENDO_SEED
-    randoms       = CALIENDO_SEED
-    times         = CALIENDO_SEED
-except:
-    pass
 
 CALIENDO_CONFIG[ 'HOST' ] = CALIENDO_CONFIG[ 'HOST' ] or 'localhost'
 
@@ -92,6 +84,15 @@ def time(*args):
     else:
         return t_time.time()
 
+def attempt_drop( ):
+    drop = "DROP TABLE test_io;"
+    conn = connect()
+    if not conn:
+        raise Exception( "Caliendo could not connect to the database" )
+    curs = conn.cursor()
+    curs.execute( drop )
+    conn.close()
+
 def attempt_create( ):
     create = """
             CREATE TABLE test_io (
@@ -112,6 +113,24 @@ def attempt_create( ):
     except:
         pass # Fail to create table gracefully
 
+def get_or_set_seed( ):
+    global CALIENDO_SEED
+    res = select( 'CALIENDO_SEED' )
+    if res:
+      hash, methodname, CALIENDO_SEED, args = res[ 0 ]
+      CALIENDO_SEED = int( float( CALIENDO_SEED ) )
+    else: 
+        insert( {
+          'hash': 'CALIENDO_SEED',
+          'methodname': '',
+          'args': '',
+          'kwargs': '',
+          'returnval': CALIENDO_SEED
+        } )
+
+def recache( ):
+    attempt_drop( )
+    get_or_set_seed( )
 
 if USE_CALIENDO:
     # Database configuration
@@ -139,3 +158,9 @@ if USE_CALIENDO:
 
     # If the supporting db table doesn't exist; create it.
     attempt_create( )
+
+    # If there is no seed it's probably because we're recaching. Cache one!
+    get_or_set_seed( )
+
+    randoms       = CALIENDO_SEED
+    times         = CALIENDO_SEED
