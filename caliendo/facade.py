@@ -1,5 +1,6 @@
 from hashlib import sha1
 import caliendo
+import inspect
 import cPickle as pickle
 import sys
 
@@ -74,17 +75,23 @@ class Facade( object ):
     """
     def append_and_return( self, *args, **kwargs ):
       call_num = caliendo.seq()
+    
+      current_frame     = inspect.currentframe()
+      trace_string      = ""
+      while current_frame.f_back:
+        trace_string = trace_string + current_frame.f_back.f_code.co_name
+        current_frame = current_frame.f_back 
+
       call_hash              = sha1(str( caliendo.randoms ) + 
                                     str(frozenset(caliendo.serialize_args(args))) + 
                                     str( call_num ) +
                                     str(frozenset(caliendo.serialize_args(kwargs))) + 
-                                    method_name + 
+                                    trace_string +
                                     str( caliendo.seqs ) ).hexdigest()
       cd                     = caliendo.fetch_call_descriptor( call_hash )
+      print call_hash
 
-    print "%s %d %d %d" % (method_name, call_num, caliendo.randoms, caliendo.seqs)
       if cd:
-        print "found %s " % method_name
         return cd.returnval
       else:
         returnval = (self.__store__['methods'][method_name])(*args, **kwargs) 
@@ -100,7 +107,7 @@ class Facade( object ):
 
   def __getattr__( self, key ):
     if key not in self.__store__:
-        raise Exception( "Key has not been set in the facade! Method is undefined." )
+        raise Exception( "Key, " + str( key ) + " has not been set in the facade! Method is undefined." )
     return self.__store__[ key ]
 
   def __init__( self, o ):
@@ -108,14 +115,17 @@ class Facade( object ):
     store = self.__store__
     store[ 'methods' ] = {}
 
-    for method_name in dir( o ):
-      if '__' not in method_name:
+    for method_name, member in inspect.getmembers( o ):
+      #if '__' not in method_name:
         if caliendo.USE_CALIENDO:
-            self.__store__['methods'][method_name] = eval( "o." + method_name )
-            ret_val                              = self.wrap( method_name )
-            self.__store__[ method_name ]          = ret_val
+            if inspect.ismethod(member) or inspect.isfunction(member) or inspect.isclass(member):
+                self.__store__['methods'][method_name] = eval( "o." + method_name )
+                ret_val                                = self.wrap( method_name )
+                self.__store__[ method_name ]          = ret_val
+            elif '__' not in method_name:
+                print method_name
         else:
-            self.__store__[ method_name ]          = eval( "o." + method_name )
+            self.__store__[ method_name ]              = eval( "o." + method_name )
 
 if __name__ == '__main__':
   cd = CallDescriptor( hash=sha1("test").hexdigest(), method='someMethod', returnval='Some Value', args='Some Arguments' )

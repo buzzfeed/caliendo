@@ -1,11 +1,12 @@
 import random as r_random
 import cPickle as pickle
 from facade import CallDescriptor
+import time as t_time
 import sys
 import os
 import time
 
-USE_CALIENDO = True 
+USE_CALIENDO = False
 dbname       = 'caliendo.db'
 rdbms        = 'sqllite'
 user         = 'root'
@@ -16,10 +17,14 @@ randoms      = 0
 seqs         = 0
 
 if 'DJANGO_SETTINGS_MODULE' in os.environ:
-    settings = __import__( os.environ[ 'DJANGO_SETTINGS_MODULE' ], globals(), locals(), ['DATABASES'], -1 )
+    settings = __import__( os.environ[ 'DJANGO_SETTINGS_MODULE' ], globals(), locals(), ['DATABASES', 'USE_CALIENDO' ], -1 )
 
 try:
     CALIENDO_CONFIG = settings.DATABASES[ 'default' ]
+    if 'USE_CALIENDO' in dir( settings ):
+        sys.stderr.write( "SETTING USE_CALIENDO TO: " + str( settings.USE_CALIENDO ) + "\n" )
+        sys.stderr.write( "SETTING FILE IS AT: " + str( os.environ[ 'DJANGO_SETTINGS_MODULE' ] ) + "\n" )
+        USE_CALIENDO = settings.USE_CALIENDO 
 except:
     CALIENDO_CONFIG = {
         'HOST'     : host,
@@ -30,6 +35,8 @@ except:
     }
 
 CALIENDO_CONFIG[ 'HOST' ] = CALIENDO_CONFIG[ 'HOST' ] or 'localhost'
+
+USE_CALIENDO = True
 
 def init(fn):
     global randoms
@@ -97,6 +104,15 @@ def random(*args):
     else:
         return r_random.random(*args)
 
+def attempt_drop( ):
+    drop = "DROP TABLE test_io;"
+    conn = connect()
+    if not conn:
+        raise Exception( "Caliendo could not connect to the database" )
+    curs = conn.cursor()
+    curs.execute( drop )
+    conn.close()
+
 def create_tables( ):
     create_test_io = """
             CREATE TABLE test_io (
@@ -106,6 +122,7 @@ def create_tables( ):
               returnval BLOB
             )
              """
+
     create_test_seeds = """
             CREATE TABLE test_seed (
                 name VARCHAR(64) NOT NULL PRIMARY KEY,
@@ -129,7 +146,8 @@ def create_tables( ):
     except Exception, e:
         pass
         
-
+def recache( ):
+    attempt_drop( )
 
 if USE_CALIENDO:
     # Database configuration
@@ -157,3 +175,4 @@ if USE_CALIENDO:
 
     # If the supporting db table doesn't exist; create it.
     create_tables( )
+
