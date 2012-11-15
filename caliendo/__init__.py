@@ -20,6 +20,8 @@ if 'DJANGO_SETTINGS_MODULE' in os.environ:
 try:
     CALIENDO_CONFIG = settings.DATABASES[ 'default' ]
     if 'USE_CALIENDO' in dir( settings ):
+        sys.stderr.write( "SETTING USE_CALIENDO TO: " + str( settings.USE_CALIENDO ) + "\n" )
+        sys.stderr.write( "SETTING FILE IS AT: " + str( os.environ[ 'DJANGO_SETTINGS_MODULE' ] ) + "\n" )
         USE_CALIENDO = settings.USE_CALIENDO 
 except:
     CALIENDO_CONFIG = {
@@ -165,3 +167,5 @@ if USE_CALIENDO:
 
     randoms       = CALIENDO_SEED
     times         = CALIENDO_SEED
+
+sys.stderr.write( "USE_CALIENDO IS SET TO " + str( USE_CALIENDO ) + "\n" )
