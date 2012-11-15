@@ -40,7 +40,6 @@ def init(fn):
 
     if not row:
         row = [ r_random.randrange(sys.maxint), long( time.time() * 100000) ]
-        print row
         insert_test( name, row[0], row[1] )
     else:
         row = row[0]
@@ -147,13 +146,11 @@ if USE_CALIENDO:
         password = c[ 'PASSWORD' ]
 
     if 'mysql' in rdbms:
-        print "mysql"
         if dbname == 'caliendo.db':
             dbname = 'caliendo'
         from MySQLdb import connect as mysql_connect
         from db_connectivity.mysql import *
     else:
-        print "sqlite"
         from sqlite3 import connect as sqllite_connect
         from db_connectivity.sqlite import *
 

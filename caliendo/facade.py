@@ -82,6 +82,7 @@ class Facade( object ):
                                     str( caliendo.seqs ) ).hexdigest()
       cd                     = caliendo.fetch_call_descriptor( call_hash )
 
+    print "%s %d %d %d" % (method_name, call_num, caliendo.randoms, caliendo.seqs)
       if cd:
         print "found %s " % method_name
         return cd.returnval
