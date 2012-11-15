@@ -5,7 +5,7 @@ import sys
 def connect( ):
     return sqlite_connect( dbname )
 
-def insert( args ):
+def insert_io( args ):
     sql = "INSERT INTO test_io ( hash, methodname, args, returnval ) VALUES ( :hash, :methodname, :args, :returnval );"
     con = connect()
     if not con:
@@ -25,7 +25,7 @@ def insert( args ):
 
     con.close()
 
-def update( args ):
+def update_io( args ):
     sql = "UPDATE test_io SET methodname=:methodname, args=:args, returnval=:returnval WHERE hash=:hash;"
     con = connect()
     if not con:
@@ -35,7 +35,7 @@ def update( args ):
     con.commit()
     con.close()
 
-def select( hash ):
+def select_io( hash ):
     sql = "SELECT hash, methodname, returnval, args FROM test_io WHERE hash = '%s';" % str(hash)
     con = connect()
     if not con:
@@ -44,4 +44,17 @@ def select( hash ):
     cur.execute( sql )
     res = cur.fetchall()
     return res
+
+def insert_test( name, random, seq ):
+    sql = "INSERT INTO test_seed ( name, random, seq ) VALUES ( %(name)s, %(random)s, %(seq)s )"
+    con = connect()
+    cur = con.cursor()
+    cur.execute( sql, {'name': name, 'random': random, 'seq': seq} )
+
+def select_test( args ):
+    sql = "SELECT random, seq FROM test_seed WHERE name = %(name)s"
+    con = connect()
+    cur = con.cursor()
+    cur.execute( sql, args )
+    return cur.fetchall()
 

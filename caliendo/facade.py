@@ -43,10 +43,10 @@ class CallDescriptor:
     }
     
     try:
-        caliendo.insert( v )
+        caliendo.insert_io( v )
     except:
         try:
-            caliendo.update( v )
+            caliendo.update_io( v )
         except:
             raise Exception( "Error saving Caliendo CallDescriptor to the database.")
     
@@ -62,8 +62,6 @@ class Facade( object ):
   called. 
   """
 
-  call_counter =  [ 0 ]
-
   def wrap( self, method_name ):
     """
     This method actually does the wrapping. When it's given a method to copy it
@@ -74,12 +72,18 @@ class Facade( object ):
 
     :rtype: lambda function.
     """
-    def append_and_return( self, call_counter, *args, **kwargs ):
-      call_counter[ 0 ] = call_counter[ 0 ] + 1
-      call_hash         = sha1(str( call_counter[ 0 ] ) + str(frozenset(caliendo.serialize_args(args))) + str(frozenset(caliendo.serialize_args(kwargs))) + method_name ).hexdigest()
-      cd                = caliendo.fetch_call_descriptor( call_hash )
+    def append_and_return( self, *args, **kwargs ):
+      call_num = caliendo.seq()
+      call_hash              = sha1(str( caliendo.randoms ) + 
+                                    str(frozenset(caliendo.serialize_args(args))) + 
+                                    str( call_num ) +
+                                    str(frozenset(caliendo.serialize_args(kwargs))) + 
+                                    method_name + 
+                                    str( caliendo.seqs ) ).hexdigest()
+      cd                     = caliendo.fetch_call_descriptor( call_hash )
 
       if cd:
+        print "found %s " % method_name
         return cd.returnval
       else:
         returnval = (self.__store__['methods'][method_name])(*args, **kwargs) 
@@ -91,7 +95,7 @@ class Facade( object ):
         cd.save()
         return cd.returnval
 
-    return lambda *args, **kwargs: append_and_return( self, self.call_counter, *args, **kwargs )
+    return lambda *args, **kwargs: append_and_return( self, *args, **kwargs )
 
   def __getattr__( self, key ):
     if key not in self.__store__:

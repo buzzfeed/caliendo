@@ -126,7 +126,8 @@ class  CaliendoTestCase(unittest.TestCase):
 
         def test(fh):
             op = Facade( o )
-            fh.write("%s" % str(op.update() == 1))
+            result = o.update()
+            fh.write(str(result == 1))
             fh.close()
             os._exit(0)
 

@@ -3,21 +3,23 @@ import cPickle as pickle
 from facade import CallDescriptor
 import sys
 import os
+import time
 
 USE_CALIENDO = True 
-randoms      = 0
 dbname       = 'caliendo.db'
 rdbms        = 'sqllite'
 user         = 'root'
 password     = None
 host         = 'localhost'
 
+randoms      = 0
+seqs         = 0
+
 if 'DJANGO_SETTINGS_MODULE' in os.environ:
     settings = __import__( os.environ[ 'DJANGO_SETTINGS_MODULE' ], globals(), locals(), ['DATABASES'], -1 )
 
 try:
     CALIENDO_CONFIG = settings.DATABASES[ 'default' ]
-    USE_CALIENDO    = True 
 except:
     CALIENDO_CONFIG = {
         'HOST'     : host,
@@ -28,6 +30,23 @@ except:
     }
 
 CALIENDO_CONFIG[ 'HOST' ] = CALIENDO_CONFIG[ 'HOST' ] or 'localhost'
+
+def init(fn):
+    global randoms
+    global seqs
+
+    name = "%s:%s" % (fn.__class__.__name__, fn.__name__)
+    row = select_test( {'name': name} )
+
+    if not row:
+        row = [ r_random.randrange(sys.maxint), long( time.time() * 100000) ]
+        print row
+        insert_test( name, row[0], row[1] )
+    else:
+        row = row[0]
+
+    randoms, seqs = row
+    return fn
 
 def serialize_args( args ):
     """
@@ -60,39 +79,57 @@ def fetch_call_descriptor( hash ):
 
     :rtype: CallDescriptor corresponding to the hash passed or None if it wasn't found.
     """
-    res = select( hash )
+    res = select_io( hash )
     if res:
       hash, methodname, returnval, args = res[ 0 ]
       return CallDescriptor( hash, methodname, pickle.loads( str( returnval ) ), pickle.loads( str( args ) ) )
     return None
 
+def seq():
+    global seqs
+    seqs = seqs + 1
+    return seqs
+
 def random(*args):
     global randoms
     if USE_CALIENDO:
-        randoms = randoms + 1
-        return randoms + 0.38# Chosen by fair roll of dice.
+        randoms = randoms + 1.38
+        return randoms 
     else:
         return r_random.random(*args)
 
-def attempt_create( ):
-    create = """
+def create_tables( ):
+    create_test_io = """
             CREATE TABLE test_io (
               hash VARCHAR( 40 ) NOT NULL PRIMARY KEY,
               methodname VARCHAR( 255 ),
               args BLOB,
               returnval BLOB
-            );
+            )
              """
+    create_test_seeds = """
+            CREATE TABLE test_seed (
+                name VARCHAR(64) NOT NULL PRIMARY KEY,
+                random BIGINT NOT NULL,
+                seq BIGINT NOT NULL
+            )
+            """
 
     try:
-        conn = connect()
+        conn = connection.connect()
         if not conn:
             raise Exception( "Caliendo could not connect to the database" )
         curs = conn.cursor()
-        curs.execute( create )
-        conn.close()
-    except:
-        pass # Fail to create table gracefully
+
+        for sql in [ create_test_io, create_test_seeds ]:
+            try:
+                curs.execute( sql )
+            except Exception:
+                pass
+
+    except Exception, e:
+        pass
+        
 
 
 if USE_CALIENDO:
@@ -110,14 +147,16 @@ if USE_CALIENDO:
         password = c[ 'PASSWORD' ]
 
     if 'mysql' in rdbms:
+        print "mysql"
         if dbname == 'caliendo.db':
             dbname = 'caliendo'
         from MySQLdb import connect as mysql_connect
         from db_connectivity.mysql import *
     else:
+        print "sqlite"
         from sqlite3 import connect as sqllite_connect
         from db_connectivity.sqlite import *
 
 
     # If the supporting db table doesn't exist; create it.
-    attempt_create( )
+    create_tables( )

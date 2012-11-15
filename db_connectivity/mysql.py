@@ -2,38 +2,56 @@ from caliendo import host, user, password, dbname
 from MySQLdb import connect as mysql_connect
 import sys
 
-def connect( ):
-    params = { 
-        'host': host,
-        'user': user,
-        'passwd': password,
-        'db': dbname
-    }
-    conn = mysql_connect( **params ) 
-    if not conn:
-      message = "Could not connect to mysql database " + dbname 
-      raise Exception( message ) 
-    return conn
+class Connection():
+    def __init__( self ):
+        self.conn = None
 
-def insert( args ):
-    sql = "INSERT INTO test_io ( hash, methodname, args, returnval ) VALUES ( %(hash)s, %(methodname)s, %(args)s, %(returnval)s );"
-    con = connect()
+    def connect( self ):
+        params = { 
+            'host': host,
+            'user': user,
+            'passwd': password,
+            'db': dbname
+        }
+        self.conn = self.conn or mysql_connect( **params ) 
+        if not self.conn:
+          message = "Could not connect to mysql database " + dbname 
+          raise Exception( message ) 
+        return self.conn
+
+connection = Connection()
+
+def insert_io( args ):
+    sql = "INSERT INTO test_io ( hash, methodname, args, returnval ) VALUES ( %(hash)s, %(methodname)s, %(args)s, %(returnval)s )"
+    con = connection.connect()
     cur = con.cursor()
     cur.execute( sql, args )
-    con.close()
 
-def update( args ):
-    sql = "UPDATE test_io SET methodname=%(methodname)s, args=%(args)s, returnval=%(returnval)s WHERE hash=%(hash)s;"
-    con = connect()
+def update_io( args ):
+    sql = "UPDATE test_io SET methodname=%(methodname)s, args=%(args)s, returnval=%(returnval)s WHERE hash=%(hash)s"
+    con = connection.connect()
     cur = con.cursor()
     cur.execute( sql, args )
-    con.close()
 
-def select( hash ):
-    sql = "SELECT hash, methodname, returnval, args FROM test_io WHERE hash = '%s';" % str(hash)
-    con = connect()
+def select_io( hash ):
+    sql = "SELECT hash, methodname, returnval, args FROM test_io WHERE hash = '%s'" % str(hash)
+    con = connection.connect()
     cur = con.cursor()
     cur.execute( sql )
     res = cur.fetchall()
     return res 
+
+def insert_test( name, random, seq ):
+    sql = "INSERT INTO test_seed ( name, random, seq ) VALUES ( %(name)s, %(random)s, %(seq)s )"
+    con = connection.connect()
+    cur = con.cursor()
+    cur.execute( sql, {'name': name, 'random': random, 'seq': seq} )
+
+def select_test( args ):
+    sql = "SELECT random, seq FROM test_seed WHERE name = %(name)s"
+    con = connection.connect()
+    cur = con.cursor()
+    cur.execute( sql, args )
+    return cur.fetchall()
+
 
