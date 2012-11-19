@@ -36,8 +36,6 @@ except:
 
 CALIENDO_CONFIG[ 'HOST' ] = CALIENDO_CONFIG[ 'HOST' ] or 'localhost'
 
-USE_CALIENDO = True
-
 def serialize_args( args ):
     """
     Attempts to serialize arguments in a consistently ordered way.
