@@ -5,6 +5,8 @@ import time as t_time
 import sys
 import os
 import time
+from hashlib import sha1
+import inspect
 
 USE_CALIENDO = False
 dbname       = 'caliendo.db'
@@ -22,8 +24,6 @@ if 'DJANGO_SETTINGS_MODULE' in os.environ:
 try:
     CALIENDO_CONFIG = settings.DATABASES[ 'default' ]
     if 'USE_CALIENDO' in dir( settings ):
-        sys.stderr.write( "SETTING USE_CALIENDO TO: " + str( settings.USE_CALIENDO ) + "\n" )
-        sys.stderr.write( "SETTING FILE IS AT: " + str( os.environ[ 'DJANGO_SETTINGS_MODULE' ] ) + "\n" )
         USE_CALIENDO = settings.USE_CALIENDO 
 except:
     CALIENDO_CONFIG = {
@@ -37,22 +37,6 @@ except:
 CALIENDO_CONFIG[ 'HOST' ] = CALIENDO_CONFIG[ 'HOST' ] or 'localhost'
 
 USE_CALIENDO = True
-
-def init(fn):
-    global randoms
-    global seqs
-
-    name = "%s:%s" % (fn.__class__.__name__, fn.__name__)
-    row = select_test( {'name': name} )
-
-    if not row:
-        row = [ r_random.randrange(sys.maxint), long( time.time() * 100000) ]
-        insert_test( name, row[0], row[1] )
-    else:
-        row = row[0]
-
-    randoms, seqs = row
-    return fn
 
 def serialize_args( args ):
     """
@@ -92,17 +76,20 @@ def fetch_call_descriptor( hash ):
     return None
 
 def seq():
-    global seqs
-    seqs = seqs + 1
-    return seqs
+    current_frame     = inspect.currentframe().f_back
+    trace_string      = ""
+    while current_frame.f_back:
+      trace_string = trace_string + current_frame.f_back.f_code.co_name
+      current_frame = current_frame.f_back
+    return counter.get_from_trace(trace_string)
 
 def random(*args):
-    global randoms
-    if USE_CALIENDO:
-        randoms = randoms + 1.38
-        return randoms 
-    else:
-        return r_random.random(*args)
+    current_frame     = inspect.currentframe().f_back
+    trace_string      = ""
+    while current_frame.f_back:
+      trace_string = trace_string + current_frame.f_back.f_code.co_name
+      current_frame = current_frame.f_back
+    return counter.get_from_trace(trace_string)
 
 def attempt_drop( ):
     drop = "DROP TABLE test_io;"
@@ -125,12 +112,11 @@ def create_tables( ):
 
     create_test_seeds = """
             CREATE TABLE test_seed (
-                name VARCHAR(64) NOT NULL PRIMARY KEY,
+                hash VARCHAR( 40 ) NOT NULL PRIMARY KEY,
                 random BIGINT NOT NULL,
                 seq BIGINT NOT NULL
             )
             """
-
     try:
         conn = connection.connect()
         if not conn:
@@ -175,4 +161,40 @@ if USE_CALIENDO:
 
     # If the supporting db table doesn't exist; create it.
     create_tables( )
+
+class Counter:
+
+  __counters = { }
+  __offset   = 100000
+
+  def get_from_trace(self, trace):
+    key = sha1( trace ).hexdigest()
+    if key in self.__counters:
+      t = self.__counters[ key ]
+      self.__counters[ key ] = t + 1
+      return t
+    else:
+      t = self.__get_seed_from_trace( trace )
+      if not t:
+        t = self.__set_seed_by_trace( trace )
+      self.__counters[ key ] = t + 1
+      return t
+
+  def __get_seed_from_trace(self, trace):
+    key = sha1( trace ).hexdigest()
+    res = select_test( key )
+    if res:
+      random, seq = res[0]
+      return seq
+    return None
+
+  def __set_seed_by_trace(self, trace):
+    key = sha1( trace ).hexdigest()
+    offset = time.time() * 1000000 + self.__offset
+    self.__offset = int( 1.5 * self.__offset )
+    insert_test( key, long( time.time() * 1000000 ), long( time.time() * 1000000 ) )
+    seq = self.__get_seed_from_trace( trace )
+    return seq
+
+counter = Counter()
 

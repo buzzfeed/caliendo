@@ -25,13 +25,13 @@ def insert_io( args ):
     sql = "INSERT INTO test_io ( hash, methodname, args, returnval ) VALUES ( %(hash)s, %(methodname)s, %(args)s, %(returnval)s )"
     con = connection.connect()
     cur = con.cursor()
-    cur.execute( sql, args )
+    return cur.execute( sql, args )
 
 def update_io( args ):
     sql = "UPDATE test_io SET methodname=%(methodname)s, args=%(args)s, returnval=%(returnval)s WHERE hash=%(hash)s"
     con = connection.connect()
     cur = con.cursor()
-    cur.execute( sql, args )
+    return cur.execute( sql, args )
 
 def select_io( hash ):
     sql = "SELECT hash, methodname, returnval, args FROM test_io WHERE hash = '%s'" % str(hash)
@@ -41,17 +41,17 @@ def select_io( hash ):
     res = cur.fetchall()
     return res 
 
-def insert_test( name, random, seq ):
-    sql = "INSERT INTO test_seed ( name, random, seq ) VALUES ( %(name)s, %(random)s, %(seq)s )"
+def insert_test( hash, random, seq ):
+    sql = "INSERT INTO test_seed ( hash, random, seq ) VALUES ( %(hash)s, %(random)s, %(seq)s )"
     con = connection.connect()
     cur = con.cursor()
-    cur.execute( sql, {'name': name, 'random': random, 'seq': seq} )
+    cur.execute( sql, {'hash': hash, 'random': random, 'seq': seq} )
 
-def select_test( args ):
-    sql = "SELECT random, seq FROM test_seed WHERE name = %(name)s"
+def select_test( hash ):
+    sql = "SELECT random, seq FROM test_seed WHERE hash = %(hash)s"
     con = connection.connect()
     cur = con.cursor()
-    cur.execute( sql, args )
-    return cur.fetchall()
-
+    cur.execute( sql, { 'hash': hash } )
+    res = cur.fetchall()
+    return res
 

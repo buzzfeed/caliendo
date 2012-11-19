@@ -74,22 +74,19 @@ class Facade( object ):
     :rtype: lambda function.
     """
     def append_and_return( self, *args, **kwargs ):
-      call_num = caliendo.seq()
-    
       current_frame     = inspect.currentframe()
       trace_string      = ""
       while current_frame.f_back:
-        trace_string = trace_string + current_frame.f_back.f_code.co_name
+        trace_string = trace_string + current_frame.f_back.f_code.co_name + " "
         current_frame = current_frame.f_back 
 
-      call_hash              = sha1(str( caliendo.randoms ) + 
-                                    str(frozenset(caliendo.serialize_args(args))) + 
-                                    str( call_num ) +
-                                    str(frozenset(caliendo.serialize_args(kwargs))) + 
-                                    trace_string +
-                                    str( caliendo.seqs ) ).hexdigest()
+      to_hash = (str(frozenset(caliendo.serialize_args(args))) + "\n" +
+                              str( caliendo.counter.get_from_trace( trace_string ) ) + "\n" +
+                              str(frozenset(caliendo.serialize_args(kwargs))) + "\n" +
+                              trace_string + "\n" )
+
+      call_hash              = sha1( to_hash ).hexdigest()
       cd                     = caliendo.fetch_call_descriptor( call_hash )
-      print call_hash
 
       if cd:
         return cd.returnval
