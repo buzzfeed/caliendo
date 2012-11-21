@@ -2,8 +2,6 @@
 
 __author__ = "andrew.kelleher@buzzfeed.com (Andrew Kelleher)"
 
-import sys
-
 try:
   from setuptools import setup, find_packages
 except ImportError:
@@ -13,7 +11,7 @@ except ImportError:
 
 setup(
     name='caliendo',
-    version='v0.0.8',
+    version='v0.0.12',
     packages=find_packages(),
     author='Andrew Kelleher',
     author_email='andrew.kelleher@buzzfeed.com',
