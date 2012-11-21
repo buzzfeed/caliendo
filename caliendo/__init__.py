@@ -23,8 +23,7 @@ if 'DJANGO_SETTINGS_MODULE' in os.environ:
 
 try:
     CALIENDO_CONFIG = settings.DATABASES[ 'default' ]
-    if 'USE_CALIENDO' in dir( settings ):
-        USE_CALIENDO = settings.USE_CALIENDO 
+    USE_CALIENDO = settings.USE_CALIENDO 
 except:
     CALIENDO_CONFIG = {
         'HOST'     : host,
@@ -69,8 +68,15 @@ def fetch_call_descriptor( hash ):
     """
     res = select_io( hash )
     if res:
-      hash, methodname, returnval, args = res[ 0 ]
-      return CallDescriptor( hash, methodname, pickle.loads( str( returnval ) ), pickle.loads( str( args ) ) )
+      p = { 'methodname': '', 'returnval': '', 'args': '' }
+      for packet in res:
+        hash, methodname, returnval, args, packet_num = packet
+        sys.stderr.write( "Unpacking packet: " + str( packet_num ) + "\n" )
+        p['methodname'] = p['methodname'] + methodname
+        p['returnval']  = p['returnval'] + returnval
+        p['args']       = p['args'] + args
+
+      return CallDescriptor( hash, p['methodname'], pickle.loads( str( p['returnval'] ) ), pickle.loads( str( p['args'] ) ) )
     return None
 
 def seq():
@@ -101,10 +107,11 @@ def attempt_drop( ):
 def create_tables( ):
     create_test_io = """
             CREATE TABLE test_io (
-              hash VARCHAR( 40 ) NOT NULL PRIMARY KEY,
+              hash VARCHAR( 40 ) NOT NULL,
               methodname VARCHAR( 255 ),
               args BLOB,
-              returnval BLOB
+              returnval BLOB,
+              packet_num INT
             )
              """
 
@@ -195,4 +202,3 @@ class Counter:
     return seq
 
 counter = Counter()
-

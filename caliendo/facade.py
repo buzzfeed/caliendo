@@ -2,6 +2,7 @@ from hashlib import sha1
 import caliendo
 import inspect
 import cPickle as pickle
+import math
 import sys
 
 class CallDescriptor:
@@ -10,7 +11,7 @@ class CallDescriptor:
   a hash key for lookups, the arguments, and return value. This way the call can
   be handled cleanly and referenced later.
   """
-  def __init__( self, hash=None, method=None, returnval=None, args=None, kwargs=None ):
+  def __init__( self, hash='', method='', returnval='', args='', kwargs='' ):
     """
     CallDescriptor initialiser. 
     
@@ -26,6 +27,70 @@ class CallDescriptor:
     self.args       = args
     self.kwargs     = kwargs
 
+  def __empty_packet(self, packet_num):
+    return {
+        'hash': '',
+        'packet_num': packet_num,
+        'methodname': '',
+        'args': '',
+        'returnval': ''
+      }
+
+  def query_buffer(self, methodname, args, returnval):
+    class Buf:
+      def __init__(self, methodname, args, returnval):
+        args                   = pickle.dumps( args )
+        returnval              = pickle.dumps( returnval )
+        self.__data            = "".join([ methodname, args, returnval ])
+        self.__methodname_len  = len( methodname )
+        self.__args_len        = len( args )
+        self.__returnval_len   = len( returnval )
+        self.length            = self.__methodname_len + self.__args_len + self.__returnval_len
+        self.char              = 0
+
+      def next(self):
+        if self.char + 1 > self.length:
+          raise StopIteration
+
+        c         = self.__data[ self.char ]
+        attr      = self.attr()
+        self.char = self.char + 1
+
+        return c, attr
+
+      def __iter__(self):
+        return self
+        
+      def attr(self):
+        if self.char < self.__methodname_len:
+          return 'methodname'
+        elif self.char < self.__methodname_len + self.__args_len:
+          return 'args'
+        else:
+          return 'returnval'
+
+    return Buf( methodname, args, returnval )
+
+  def __enumerate_packets(self):
+    max_packet_size  = 1024 # 2MB, prolly more like 8MB for 4b char size. MySQL default limit is 16 
+    buffer           = self.query_buffer( self.methodname, self.args, self.returnval )
+    packet_num       = 0
+    packets          = [ ]
+    while buffer.char < buffer.length:
+      p = self.__empty_packet( packet_num )
+      packet_length = 0
+      for char, attr in buffer:
+        p[attr] += char
+        packet_length += 1
+        if packet_length == max_packet_size:
+          break
+      packets.append( p )
+      packet_num += 1
+    return packets
+
+  def enumerate(self):
+    self.__enumerate_packets()
+
   def save( self ):
     """
     Save method for the CallDescriptor.
@@ -34,23 +99,12 @@ class CallDescriptor:
     database record corresponding to the hash. If it doesn't already exist it'll
     be INSERT'd.
     """
+    packets = self.__enumerate_packets( )
+    caliendo.delete_io( self.hash )
+    for packet in packets:
+      packet['hash'] = self.hash
+      caliendo.insert_io( packet )
 
-    v = {
-      'hash'      : self.hash,
-      'methodname': self.methodname,
-      'args'      : pickle.dumps( self.args ),
-      'kwargs'    : pickle.dumps( self.kwargs ),
-      'returnval' : pickle.dumps( self.returnval )
-    }
-    
-    try:
-        caliendo.insert_io( v )
-    except:
-        try:
-            caliendo.update_io( v )
-        except:
-            raise Exception( "Error saving Caliendo CallDescriptor to the database.")
-    
     return self # Supports chaining
 
 class Facade( object ):
@@ -87,7 +141,6 @@ class Facade( object ):
 
       call_hash              = sha1( to_hash ).hexdigest()
       cd                     = caliendo.fetch_call_descriptor( call_hash )
-
       if cd:
         return cd.returnval
       else:
@@ -113,7 +166,6 @@ class Facade( object ):
     store[ 'methods' ] = {}
 
     for method_name, member in inspect.getmembers( o ):
-      #if '__' not in method_name:
         if caliendo.USE_CALIENDO:
             if inspect.ismethod(member) or inspect.isfunction(member) or inspect.isclass(member):
                 self.__store__['methods'][method_name] = eval( "o." + method_name )
@@ -123,6 +175,10 @@ class Facade( object ):
                 print method_name
         else:
             self.__store__[ method_name ]              = eval( "o." + method_name )
+
+if not caliendo.USE_CALIENDO:
+  def Facade( some_instance ):
+    return some_instance # Just return.
 
 if __name__ == '__main__':
   cd = CallDescriptor( hash=sha1("test").hexdigest(), method='someMethod', returnval='Some Value', args='Some Arguments' )
