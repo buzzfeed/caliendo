@@ -1,6 +1,7 @@
 USE_CALIENDO = False
 
 from caliendo.util import *
+import random as random_r
 import os
 
 dbname       = 'caliendo.db'
@@ -53,3 +54,13 @@ if USE_CALIENDO:
 
     # If the supporting db table doesn't exist; create it.
     create_tables( )
+else:
+  counter = time.time() * 1000000
+  def seq():
+    global counter
+    c = counter
+    counter = counter + 1
+    return c
+
+  def random(*args):
+    return random_r.random()
