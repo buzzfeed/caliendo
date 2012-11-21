@@ -64,7 +64,7 @@ def select_test( hash ):
     return res
 
 def delete_io( hash ):
-  sql = "DELETE FROM test_io WHERE hash = %(hash)s"
-  con = connection.connect()
-  cur = con.cursor()
-  return cur.execute( sql, { 'hash': hash } )
+    sql = "DELETE FROM test_io WHERE hash = %(hash)s"
+    con = connection.connect()
+    cur = con.cursor()
+    return cur.execute( sql, { 'hash': hash } )

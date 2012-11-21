@@ -1,7 +1,8 @@
+USE_CALIENDO = False
+
 from caliendo.util import *
 import os
 
-USE_CALIENDO = False
 dbname       = 'caliendo.db'
 rdbms        = 'sqllite'
 user         = 'root'
@@ -11,12 +12,11 @@ host         = 'localhost'
 randoms      = 0
 seqs         = 0
 
-if 'DJANGO_SETTINGS_MODULE' in os.environ:
-    settings = __import__( os.environ[ 'DJANGO_SETTINGS_MODULE' ], globals(), locals(), ['DATABASES', 'USE_CALIENDO' ], -1 )
-
 try:
+    if 'DJANGO_SETTINGS_MODULE' in os.environ:
+      settings = __import__( os.environ[ 'DJANGO_SETTINGS_MODULE' ], globals(), locals(), ['DATABASES', 'USE_CALIENDO' ], -1 )
     CALIENDO_CONFIG = settings.DATABASES[ 'default' ]
-    USE_CALIENDO = settings.USE_CALIENDO 
+    USE_CALIENDO = settings.USE_CALIENDO
 except:
     CALIENDO_CONFIG = {
         'HOST'     : host,
@@ -53,5 +53,3 @@ if USE_CALIENDO:
 
     # If the supporting db table doesn't exist; create it.
     create_tables( )
-
-counter = Counter()

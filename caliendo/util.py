@@ -5,6 +5,40 @@ import inspect
 import time
 import sys
 
+class Counter:
+
+  __counters = { }
+  __offset   = 100000
+
+  def get_from_trace(self, trace):
+    key = sha1( trace ).hexdigest()
+    if key in self.__counters:
+      t = self.__counters[ key ]
+      self.__counters[ key ] = t + 1
+      return t
+    else:
+      t = self.__get_seed_from_trace( trace )
+      if not t:
+        t = self.__set_seed_by_trace( trace )
+      self.__counters[ key ] = t + 1
+      return t
+
+  def __get_seed_from_trace(self, trace):
+    key = sha1( trace ).hexdigest()
+    res = select_test( key )
+    if res:
+      random, seq = res[0]
+      return seq
+    return None
+
+  def __set_seed_by_trace(self, trace):
+    key = sha1( trace ).hexdigest()
+    self.__offset = int( 1.5 * self.__offset )
+    insert_test( key, long( time.time() * 1000000 ), long( time.time() * 1000000 ) )
+    seq = self.__get_seed_from_trace( trace )
+    return seq
+
+counter = Counter()
 
 def serialize_args( args ):
     """
@@ -110,37 +144,3 @@ def create_tables( ):
 
 def recache( ):
     attempt_drop( )
-
-
-class Counter:
-
-  __counters = { }
-  __offset   = 100000
-
-  def get_from_trace(self, trace):
-    key = sha1( trace ).hexdigest()
-    if key in self.__counters:
-      t = self.__counters[ key ]
-      self.__counters[ key ] = t + 1
-      return t
-    else:
-      t = self.__get_seed_from_trace( trace )
-      if not t:
-        t = self.__set_seed_by_trace( trace )
-      self.__counters[ key ] = t + 1
-      return t
-
-  def __get_seed_from_trace(self, trace):
-    key = sha1( trace ).hexdigest()
-    res = select_test( key )
-    if res:
-      random, seq = res[0]
-      return seq
-    return None
-
-  def __set_seed_by_trace(self, trace):
-    key = sha1( trace ).hexdigest()
-    self.__offset = int( 1.5 * self.__offset )
-    insert_test( key, long( time.time() * 1000000 ), long( time.time() * 1000000 ) )
-    seq = self.__get_seed_from_trace( trace )
-    return seq
