@@ -1,10 +1,21 @@
-from caliendo.facade import CallDescriptor, Facade
-from caliendo import *
+from caliendo.call_descriptor import CallDescriptor, fetch
+from caliendo.facade import Facade
+from caliendo import config
+
 import tempfile
 import unittest
 import hashlib
 import sys
 import os
+
+USE_CALIENDO = config.should_use_caliendo( )
+CONFIG       = config.get_database_config( )
+
+if USE_CALIENDO:
+    if 'mysql' in CONFIG['ENGINE']:
+        from caliendo.db.mysql import *
+    else:
+        from caliendo.db.sqlite import *
 
 class CallOnceEver:
     __die = 0
@@ -48,7 +59,7 @@ class  CaliendoTestCase(unittest.TestCase):
         self.assertEqual( cd.returnval, returnval )
         self.assertEqual( cd.args, args )
 
-        cd = fetch_call_descriptor( hash )
+        cd = fetch( hash )
 
         self.assertEqual( cd.hash, hash )
         self.assertEqual( cd.methodname, method )
@@ -83,7 +94,7 @@ class  CaliendoTestCase(unittest.TestCase):
         cd = CallDescriptor( hash=hash, method=method, returnval=returnval, args=args )
         cd.save( )
 
-        cd = fetch_call_descriptor( hash )
+        cd = fetch( hash )
         self.assertEquals( cd.hash, hash )
         self.assertEquals( cd.methodname, method )
 
@@ -92,7 +103,7 @@ class  CaliendoTestCase(unittest.TestCase):
         cd.methodname = method
         cd.save( )
 
-        cd = fetch_call_descriptor( hash )
+        cd = fetch( hash )
         self.assertEquals( cd.hash, hash )
         self.assertEquals( cd.methodname, method )
 
@@ -102,7 +113,7 @@ class  CaliendoTestCase(unittest.TestCase):
         cd.methodname = method
         cd.save( )
 
-        cd = fetch_call_descriptor( hash )
+        cd = fetch( hash )
         self.assertEquals( cd.hash, hash )
         self.assertEquals( cd.methodname, method )
 

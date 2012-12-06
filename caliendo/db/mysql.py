@@ -1,6 +1,8 @@
-from caliendo import host, user, password, dbname
 from MySQLdb import connect as mysql_connect
-import sys
+
+from caliendo import config
+
+CONFIG = config.get_database_config( )
 
 class Connection():
     def __init__( self ):
@@ -8,10 +10,10 @@ class Connection():
 
     def connect( self ):
         params = { 
-            'host': host,
-            'user': user,
-            'passwd': password,
-            'db': dbname
+            'host':   CONFIG['HOST'],
+            'user':   CONFIG['USER'],
+            'passwd': CONFIG['PASSWORD'],
+            'db':     CONFIG['NAME']
         }
         self.conn = self.conn or mysql_connect( **params ) 
         if not self.conn:

@@ -1,44 +1,17 @@
-from caliendo.facade import CallDescriptor
-from hashlib import sha1
-import cPickle as pickle
 import inspect
-import time
-import sys
 
-class Counter:
+from caliendo import config
+from caliendo.counter import counter
 
-  __counters = { }
-  __offset   = 100000
+USE_CALIENDO = config.should_use_caliendo( )
+CONFIG       = config.get_database_config( )
 
-  def get_from_trace(self, trace):
-    key = sha1( trace ).hexdigest()
-    if key in self.__counters:
-      t = self.__counters[ key ]
-      self.__counters[ key ] = t + 1
-      return t
+if USE_CALIENDO:
+    if 'mysql' in CONFIG['ENGINE']:
+        from caliendo.db.mysql import *
     else:
-      t = self.__get_seed_from_trace( trace )
-      if not t:
-        t = self.__set_seed_by_trace( trace )
-      self.__counters[ key ] = t + 1
-      return t
+        from caliendo.db.sqlite import *
 
-  def __get_seed_from_trace(self, trace):
-    key = sha1( trace ).hexdigest()
-    res = select_test( key )
-    if res:
-      random, seq = res[0]
-      return seq
-    return None
-
-  def __set_seed_by_trace(self, trace):
-    key = sha1( trace ).hexdigest()
-    self.__offset = int( 1.5 * self.__offset )
-    insert_test( key, long( time.time() * 1000000 ), long( time.time() * 1000000 ) )
-    seq = self.__get_seed_from_trace( trace )
-    return seq
-
-counter = Counter()
 
 def serialize_args( args ):
     """
@@ -63,27 +36,6 @@ def serialize_args( args ):
             arg_list.append( str( arg ) )
     return arg_list
 
-def fetch_call_descriptor( hash ):
-    """
-    Fetches CallDescriptor from the local database given a hash key representing the call. If it doesn't exist returns None.
-
-    :param str hash: The sha1 hexdigest to look the CallDescriptor up by.
-
-    :rtype: CallDescriptor corresponding to the hash passed or None if it wasn't found.
-    """
-    res = select_io( hash )
-    if res:
-      p = { 'methodname': '', 'returnval': '', 'args': '' }
-      for packet in res:
-        hash, methodname, returnval, args, packet_num = packet
-        sys.stderr.write( "Unpacking packet: " + str( packet_num ) + "\n" )
-        p['methodname'] = p['methodname'] + methodname
-        p['returnval']  = p['returnval'] + returnval
-        p['args']       = p['args'] + args
-
-      return CallDescriptor( hash, p['methodname'], pickle.loads( str( p['returnval'] ) ), pickle.loads( str( p['args'] ) ) )
-    return None
-
 def seq():
     current_frame     = inspect.currentframe().f_back
     trace_string      = ""
@@ -101,12 +53,13 @@ def random(*args):
     return counter.get_from_trace(trace_string)
 
 def attempt_drop( ):
-    drop = "DROP TABLE test_io;"
+    drop = ["DROP TABLE test_io;", "DROP TABLE test_seed;"]
     conn = connect()
     if not conn:
         raise Exception( "Caliendo could not connect to the database" )
     curs = conn.cursor()
-    curs.execute( drop )
+    for d in drop:
+        curs.execute( d )
     conn.close()
 
 def create_tables( ):
@@ -117,7 +70,7 @@ def create_tables( ):
               args BLOB,
               returnval BLOB,
               packet_num INT
-            )
+            )`
              """
 
     create_test_seeds = """

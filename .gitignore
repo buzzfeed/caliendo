@@ -2,3 +2,5 @@
 *.db
 *.pyc
 *.sw*
+dist
+caliendo.egg*

@@ -1,66 +1,26 @@
-USE_CALIENDO = False
-
-from caliendo.util import *
-import random as random_r
 import os
+import random as random_r
+import time
 
-dbname       = 'caliendo.db'
-rdbms        = 'sqllite'
-user         = 'root'
-password     = None
-host         = 'localhost'
+from caliendo import util
+from caliendo import config
 
-randoms      = 0
-seqs         = 0
-
-try:
-    if 'DJANGO_SETTINGS_MODULE' in os.environ:
-      settings = __import__( os.environ[ 'DJANGO_SETTINGS_MODULE' ], globals(), locals(), ['DATABASES', 'USE_CALIENDO' ], -1 )
-    CALIENDO_CONFIG = settings.DATABASES[ 'default' ]
-    USE_CALIENDO = settings.USE_CALIENDO
-except:
-    CALIENDO_CONFIG = {
-        'HOST'     : host,
-        'ENGINE'   : rdbms,
-        'NAME'     : dbname,
-        'USER'     : user,
-        'PASSWORD' : password
-    }
-
-CALIENDO_CONFIG[ 'HOST' ] = CALIENDO_CONFIG[ 'HOST' ] or 'localhost'
+USE_CALIENDO = config.should_use_caliendo( )
 
 if USE_CALIENDO:
-    # Database configuration
-    c = CALIENDO_CONFIG
-    if 'HOST' in c:
-        host     = c[ 'HOST' ]
-    if 'ENGINE' in c:
-        rdbms    = c[ 'ENGINE' ]
-    if 'NAME' in c:
-        dbname   = c[ 'NAME' ]
-    if 'USER' in c:
-        user     = c[ 'USER' ]
-    if 'PASSWORD' in c:
-        password = c[ 'PASSWORD' ]
-
-    if 'mysql' in rdbms:
-        if dbname == 'caliendo.db':
-            dbname = 'caliendo'
-        from MySQLdb import connect as mysql_connect
-        from caliendo.db.mysql import *
-    else:
-        from sqlite3 import connect as sqllite_connect
-        from caliendo.db.sqlite import *
-
     # If the supporting db table doesn't exist; create it.
-    create_tables( )
-else:
-  counter = time.time() * 1000000
-  def seq():
-    global counter
-    c = counter
-    counter = counter + 1
-    return c
+    util.create_tables( )
 
-  def random(*args):
-    return random_r.random()
+    def seq():    return util.seq()
+    def random(): return util.random()
+else:
+    counter = int( time.time() * 10000 )
+    
+    def seq():
+        global counter
+        c = counter
+        counter = counter + 1
+        return c
+
+    def random(*args):
+        return random_r.random()
