@@ -26,25 +26,26 @@ connection = Connection()
 def insert_io( args ):
     sql = """
           INSERT INTO test_io ( 
-            hash, 
+            hash,
+            stack,
             packet_num, 
             methodname, 
             args, 
             returnval
-          ) VALUES ( %s, %s, %s, %s, %s )"""
+          ) VALUES ( %s, %s, %s, %s, %s, %s )"""
     con = connection.connect()
     cur = con.cursor()
     a = args
-    return cur.execute( sql, ( a['hash'], int(a['packet_num']), a['methodname'], a['args'], a['returnval'] ) )
+    return cur.execute( sql, ( a['hash'], a['stack'], int(a['packet_num']), a['methodname'], a['args'], a['returnval'] ) )
 
 def update_io( args ):
-    sql = "UPDATE test_io SET methodname=%(methodname)s, args=%(args)s, returnval=%(returnval)s WHERE hash=%(hash)s"
+    sql = "UPDATE test_io SET methodname=%(methodname)s, args=%(args)s, returnval=%(returnval)s, stack=%(stack)s WHERE hash=%(hash)s"
     con = connection.connect()
     cur = con.cursor()
     return cur.execute( sql, args )
 
 def select_io( hash ):
-    sql = "SELECT hash, methodname, returnval, args, packet_num  FROM test_io WHERE hash = '%s' ORDER BY packet_num ASC" % str(hash)
+    sql = "SELECT hash, stack, methodname, returnval, args, packet_num  FROM test_io WHERE hash = '%s' ORDER BY packet_num ASC" % str(hash)
     con = connection.connect()
     cur = con.cursor()
     cur.execute( sql )

@@ -1,3 +1,4 @@
+import sys
 import inspect
 
 from caliendo import config
@@ -63,14 +64,16 @@ def attempt_drop( ):
     conn.close()
 
 def create_tables( ):
+    sys.stderr.write( "ATTEMPTING TO CREATE TABLES...\n" )
     create_test_io = """
             CREATE TABLE test_io (
               hash VARCHAR( 40 ) NOT NULL,
+              stack TEXT,
               methodname VARCHAR( 255 ),
               args BLOB,
               returnval BLOB,
               packet_num INT
-            )`
+            )
              """
 
     create_test_seeds = """
@@ -82,18 +85,17 @@ def create_tables( ):
             """
     try:
         conn = connection.connect()
-        if not conn:
-            raise Exception( "Caliendo could not connect to the database" )
         curs = conn.cursor()
-
         for sql in [ create_test_io, create_test_seeds ]:
             try:
                 curs.execute( sql )
-            except Exception:
-                pass
+            except Exception, e:
+                sys.stderr.write( "CAUGHT EXCEPTION!\n" )
+                sys.stderr.write( str( sys.exc_info() ) + "\n" )
 
     except Exception, e:
-        pass
+        sys.stderr.write( "CAUGHT EXCEPTION 2\n" )
+        sys.stderr.write( str( e.message ) + "\n" )
 
 def recache( ):
     attempt_drop( )

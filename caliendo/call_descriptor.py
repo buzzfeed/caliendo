@@ -21,14 +21,19 @@ def fetch( hash ):
     """
     res = select_io( hash )
     if res:
-      p = { 'methodname': '', 'returnval': '', 'args': '' }
+      p = { 'methodname': '', 'returnval': '', 'args': '', 'stack': '' }
       for packet in res:
-        hash, methodname, returnval, args, packet_num = packet
+        hash, stack, methodname, returnval, args, packet_num = packet
         p['methodname'] = p['methodname'] + methodname
         p['returnval']  = p['returnval'] + returnval
         p['args']       = p['args'] + args
+        p['stack']      = p['stack'] + stack
 
-      return CallDescriptor( hash, p['methodname'], pickle.loads( str( p['returnval'] ) ), pickle.loads( str( p['args'] ) ) )
+      return CallDescriptor( hash = hash,
+                             stack = p['stack'],
+                             method = p['methodname'],
+                             returnval = pickle.loads( str( p['returnval'] ) ),
+                             args = pickle.loads( str( p['args'] ) ) )
     return None
 
 
@@ -38,7 +43,7 @@ class CallDescriptor:
   a hash key for lookups, the arguments, and return value. This way the call can
   be handled cleanly and referenced later.
   """
-  def __init__( self, hash='', method='', returnval='', args='', kwargs='' ):
+  def __init__( self, hash='', stack='', method='', returnval='', args='', kwargs='' ):
     """
     CallDescriptor initialiser.
 
@@ -49,6 +54,7 @@ class CallDescriptor:
     """
 
     self.hash       = hash
+    self.stack      = stack
     self.methodname = method
     self.returnval  = returnval
     self.args       = args
@@ -60,19 +66,21 @@ class CallDescriptor:
         'packet_num': packet_num,
         'methodname': '',
         'args': '',
-        'returnval': ''
+        'returnval': '',
+        'stack': ''
       }
 
-  def query_buffer(self, methodname, args, returnval):
+  def query_buffer(self, methodname, args, returnval, stack):
     class Buf:
-      def __init__(self, methodname, args, returnval):
+      def __init__(self, methodname, args, returnval, stack):
         args                   = pickle.dumps( args )
         returnval              = pickle.dumps( returnval )
-        self.__data            = "".join([ methodname, args, returnval ])
+        self.__data            = "".join([ methodname, args, returnval, stack ])
         self.__methodname_len  = len( methodname )
         self.__args_len        = len( args )
         self.__returnval_len   = len( returnval )
-        self.length            = self.__methodname_len + self.__args_len + self.__returnval_len
+        self.__stack_len       = len( stack )
+        self.length            = self.__methodname_len + self.__args_len + self.__returnval_len + self.__stack_len
         self.char              = 0
 
       def next(self):
@@ -93,14 +101,16 @@ class CallDescriptor:
           return 'methodname'
         elif self.char < self.__methodname_len + self.__args_len:
           return 'args'
-        else:
+        elif self.char < self.__methodname_len + self.__args_len + self.__returnval_len:
           return 'returnval'
+        else:
+          return 'stack'
 
-    return Buf( methodname, args, returnval )
+    return Buf( methodname, args, returnval, stack )
 
   def __enumerate_packets(self):
-    max_packet_size  = 1024 # 2MB, prolly more like 8MB for 4b char size. MySQL default limit is 16
-    buffer           = self.query_buffer( self.methodname, self.args, self.returnval )
+    max_packet_size  = 1024 # 1MB, prolly more like 8MB for 4b char size. MySQL default limit is 16
+    buffer           = self.query_buffer( self.methodname, self.args, self.returnval, self.stack )
     packet_num       = 0
     packets          = [ ]
     while buffer.char < buffer.length:

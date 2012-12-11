@@ -7,6 +7,15 @@ from caliendo import call_descriptor
 from caliendo import counter
 
 USE_CALIENDO = config.should_use_caliendo( )
+CONFIG       = config.get_database_config( )
+
+if USE_CALIENDO:
+    if 'mysql' in CONFIG['ENGINE']:
+        from caliendo.db.mysql import *
+    else:
+        from caliendo.db.sqlite import *
+        
+import sys
 
 class Facade( object ):
   """
@@ -17,6 +26,9 @@ class Facade( object ):
   state of that object is manipulated transparently as the Facade methods are
   called. 
   """
+
+  def delete_last_cached(self):
+    return delete_io( self.last_cached )
 
   def wrap( self, method_name ):
     """
@@ -52,6 +64,7 @@ class Facade( object ):
                                              args      = args,
                                              kwargs    = kwargs )
         cd.save()
+        self.last_cached = call_hash
         return cd.returnval
 
     return lambda *args, **kwargs: append_and_return( self, *args, **kwargs )
