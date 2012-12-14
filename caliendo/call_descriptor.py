@@ -1,3 +1,4 @@
+import sys
 import cPickle as pickle
 
 from caliendo import config
@@ -8,8 +9,10 @@ CONFIG       = config.get_database_config( )
 if USE_CALIENDO:
     if 'mysql' in CONFIG['ENGINE']:
         from caliendo.db.mysql import *
+        sys.stderr.write( "IMPORTING MYSQL FUNCTIONS\n" )
     else:
         from caliendo.db.sqlite import *
+        sys.stderr.write( "IMPORTING SQLITE FUNCTIONS\n" )
 
 def fetch( hash ):
     """

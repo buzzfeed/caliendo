@@ -1,21 +1,18 @@
-from caliendo.call_descriptor import CallDescriptor, fetch
-from caliendo.facade import Facade
-from caliendo import config
-
 import tempfile
 import unittest
 import hashlib
 import sys
 import os
 
+os.environ['USE_CALIENDO'] = 'True'
+
+from caliendo.call_descriptor import CallDescriptor, fetch
+from caliendo.facade import Facade
+from caliendo import config
+from caliendo.util import serialize_args
+
 USE_CALIENDO = config.should_use_caliendo( )
 CONFIG       = config.get_database_config( )
-
-if USE_CALIENDO:
-    if 'mysql' in CONFIG['ENGINE']:
-        from caliendo.db.mysql import *
-    else:
-        from caliendo.db.sqlite import *
 
 class CallOnceEver:
     __die = 0
@@ -45,9 +42,10 @@ class  CaliendoTestCase(unittest.TestCase):
         method    = "mymethod"
         returnval = {'thisis': [ 'my', 'return','val' ] }
         args      = ( 'a', 'b', 'c' )
-
+        #self, hash='', stack='', method='', returnval='', args='', kwargs='' ):
         cd = CallDescriptor(
             hash=hash,
+            stack='',
             method=method,
             returnval=returnval,
             args=args )
@@ -91,7 +89,7 @@ class  CaliendoTestCase(unittest.TestCase):
         returnval = { }
         args      = ( )
 
-        cd = CallDescriptor( hash=hash, method=method, returnval=returnval, args=args )
+        cd = CallDescriptor( hash=hash, stack='', method=method, returnval=returnval, args=args )
         cd.save( )
 
         cd = fetch( hash )

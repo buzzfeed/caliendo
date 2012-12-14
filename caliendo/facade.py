@@ -86,7 +86,7 @@ class Facade( object ):
                 ret_val                                = self.wrap( method_name )
                 self.__store__[ method_name ]          = ret_val
             elif '__' not in method_name:
-                print method_name
+                pass#print method_name
         else:
             self.__store__[ method_name ]              = eval( "o." + method_name )
 
