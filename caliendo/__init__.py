@@ -24,3 +24,6 @@ else:
 
     def random(*args):
         return random_r.random()
+
+def recache():
+  util.recache()
