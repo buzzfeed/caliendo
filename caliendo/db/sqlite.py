@@ -46,7 +46,6 @@ def insert_io( args ):
         res = cur.execute( sql, args )
         con.commit()
     except:
-        sys.stderr.write( str( sys.exc_info() ) + "\n" )
         sys.stderr.write( "Caliendo failed to execute commit to sqlite db\n" )
     finally:
         if con:
@@ -63,7 +62,6 @@ def update_io( args ):
         res = cur.execute( sql, args )
         con.commit()
     except Exception, e:
-        sys.stderr.write( str( sys.exc_info() ) + "\n" )
         sys.stderr.write( "Caliendo failed to update a record: " + e.message + "\n" )
     finally:
         if con:
@@ -80,7 +78,6 @@ def select_io( hash ):
         cur.execute( sql )
         res = cur.fetchall()
     except Exception, e:
-        sys.stderr.write( str( sys.exc_info() ) + "\n" )
         sys.stderr.write( "Caliendo failed to select a record from the db: " + e.message + "\n" )
     finally:
         if con:
@@ -97,7 +94,6 @@ def insert_test( hash, random, seq ):
         cur.execute( sql, {'hash': hash, 'random': random, 'seq': seq} )
         con.commit()
     except Exception, e:
-        sys.stderr.write( str( sys.exc_info() ) + "\n" )
         sys.stderr.write( "Caliendo failed in insert_test: " + e.message + "\n" )
     finally:
         if con:
@@ -114,7 +110,6 @@ def select_test( hash ):
         cur.execute( sql )
         res = cur.fetchall()
     except Exception, e:
-        sys.stderr.write( str( sys.exc_info() ) + "\n" )
         sys.stderr.write( "Caliendo failed in select_test: " + e.message + "\n" )
     finally:
         if con:
@@ -122,7 +117,6 @@ def select_test( hash ):
     return res
 
 def delete_io( hash ):
-    sys.stderr.write( "HASH: " + str(hash) + "\n" )
     try:
         con = None
         res = None
@@ -132,7 +126,6 @@ def delete_io( hash ):
         res = cur.execute( sql )
         con.commit()
     except Exception, e:
-        sys.stderr.write( str( sys.exc_info() ) + "\n" )
         sys.stderr.write( "Caliendo failed in delete_io: " + e.message + "\n" )
     finally:
         if con:
