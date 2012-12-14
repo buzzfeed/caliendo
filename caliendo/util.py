@@ -55,7 +55,7 @@ def random(*args):
 
 def attempt_drop( ):
     drop = ["DROP TABLE test_io;", "DROP TABLE test_seed;"]
-    conn = connect()
+    conn = connection.connect()
     if not conn:
         raise Exception( "Caliendo could not connect to the database" )
     curs = conn.cursor()
@@ -64,7 +64,6 @@ def attempt_drop( ):
     conn.close()
 
 def create_tables( ):
-    sys.stderr.write( "ATTEMPTING TO CREATE TABLES...\n" )
     create_test_io = """
             CREATE TABLE test_io (
               hash VARCHAR( 40 ) NOT NULL,
@@ -90,12 +89,9 @@ def create_tables( ):
             try:
                 curs.execute( sql )
             except Exception, e:
-                sys.stderr.write( "CAUGHT EXCEPTION!\n" )
-                sys.stderr.write( str( sys.exc_info() ) + "\n" )
-
+                pass
     except Exception, e:
-        sys.stderr.write( "CAUGHT EXCEPTION 2\n" )
-        sys.stderr.write( str( e.message ) + "\n" )
+      pass
 
 def recache( ):
     attempt_drop( )
