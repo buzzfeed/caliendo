@@ -3,6 +3,7 @@ import inspect
 
 from caliendo import config
 from caliendo.counter import counter
+from caliendo import call_descriptor
 
 USE_CALIENDO = config.should_use_caliendo( )
 CONFIG       = config.get_database_config( )
@@ -92,6 +93,13 @@ def create_tables( ):
                 pass
     except Exception, e:
       pass
+
+def delete( methodname, filename ):
+    hashes = get_unique_hashes()
+    for hash in hashes:
+        cd = call_descriptor.fetch( hash )
+        if methodname in cd.stack and filename in cd.stack:
+            delete_io( hash )
 
 def recache( ):
     attempt_drop( )

@@ -71,3 +71,11 @@ def delete_io( hash ):
     con = connection.connect()
     cur = con.cursor()
     return cur.execute( sql, { 'hash': hash } )
+
+def get_unique_hashes():
+    sql = "SELECT DISTINCT hash FROM test_io;"
+    con = connection.connect()
+    cur = con.cursor()
+    cur.execute(sql)
+    res = cur.fetchall()
+    return [ h[0] for h in res ]

@@ -131,3 +131,18 @@ def delete_io( hash ):
         if con:
             con.close()
     return res
+
+def get_unique_hashes():
+    try:
+        res = None
+        con = None
+        sql = "SELECT DISTINCT hash FROM test_io;"
+        con = connection.connect()
+        cur = con.cursor()
+        res = cur.execute(sql)
+    except Exception, e:
+        sys.stderr.write( "Caliendo failed in get_unique_hashes: " + e.message + "\n" )
+    finally:
+        if con:
+            con.close()
+    return [ h[0] for h in res ]
