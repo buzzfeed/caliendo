@@ -47,8 +47,25 @@ def unit(dbname=None,username=None,password=None,host=None):
     :param str settings_module: The import statement for the DJANGO_SETTINGS_MODULE
     """
     with lcd(ROOT):
-        env = ""
-        if dbname:
-            filename, full_path = __create_tmp_settings_file( dbname, username, password, host )
-            env = "env DJANGO_SETTINGS_MODULE=" + filename.replace( '.py', '' )
-        local( " ".join( [ env, "nosetests", "test/caliendo_test.py" ] ) )
+        try:
+            env = ""
+            if dbname:
+                filename, full_path = __create_tmp_settings_file( dbname, username, password, host )
+                pyc = full_path.replace( '.py', '.pyc' )
+                env = "env DJANGO_SETTINGS_MODULE=" + filename.replace( '.py', '' )
+            local( " ".join( [ env, "nosetests", "test/caliendo_test.py" ] ) )
+        finally: # Clean up.
+            if dbname:
+                try: 
+                    with open( full_path ) as f:
+                        f.close()
+                        os.remove( full_path )
+                except IOError:
+                    pass
+                try:
+                    with open( pyc ) as f:
+                        f.close()
+                        os.remove( pyc )
+                except IOError:
+                    pass
+        

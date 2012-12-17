@@ -110,26 +110,29 @@ def create_tables( ):
     except Exception, e:
       pass
 
-def delete( methodname, filename ):
+def recache( methodname=None, filename=None ):
     """
-    Deletes entries corresponding to methodname in filename.
+    Deletes entries corresponding to methodname in filename. If no arguments are passed it recaches the entire table.
 
     :param str methodname: The name of the method to target. This will delete ALL entries this method appears in the stack trace for.
     :param str filename: The filename the method is executed in. (include .py extension)
 
     :rtype int: The number of deleted entries
     """
-    hashes = get_unique_hashes()
-    deleted = 0
-    for hash in hashes:
-        cd = call_descriptor.fetch( hash )
-        if methodname in cd.stack and filename in cd.stack:
-            delete_io( hash )
-            deleted = deleted + 1
-    return deleted
-
-def recache( ):
-    """
-    Clear the entire database cache at once.
-    """
-    attempt_drop( )
+    if not methodname and not filename:
+        recache()
+        return -1
+    else:
+        reqd_strings = []
+        if methodname:
+            reqd_strings.append( methodname )
+        if filename:
+            reqd_strings.append( filename )
+        hashes = get_unique_hashes()
+        deleted = 0
+        for hash in hashes:
+            cd = call_descriptor.fetch( hash )
+            if all( [ s in cd.stack for s in reqd_strings ] ):
+                delete_io( hash )
+                deleted = deleted + 1
+        return deleted
