@@ -55,6 +55,14 @@ some_api     = SomeAPI()
 caliendo_api = Facade( some_api ) # Note: caliendo is invoked with the INSTANCE, not the CLASS
 ```
 
+As of revision v0.0.19 caliendo supports chaining so you can invoke it like:
+```python
+caliendo_api = Facade(some_api)
+baz = caliendo_api.get_foo().get_bar().get_baz() 
+```
+
+If type(baz) is not in ( float, long, str, int, dict, list, unicode ) it will be automatically wrapped by caliendo. 
+
 # Execution
 
 Once you have an instance of an API running under a `Facade` you should be able

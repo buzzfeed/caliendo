@@ -25,6 +25,14 @@ class CallOnceEver:
             self.__die = 1
             return 1
 
+class TestA:
+    def getb(self):
+        return TestB()
+
+class TestB:
+    def getc(self):
+        return TestC()
+
 class TestC:
     __private_var = 0
     def methoda(self):
@@ -221,6 +229,36 @@ class  CaliendoTestCase(unittest.TestCase):
         for hash in hashes:
             cd = fetch( hash )
             self.assertIsNone( cd )
+
+    def test_chaining(self):
+        a = TestA()
+        b = a.getb()
+        c = b.getc()
+
+        self.assertEquals( a.__class__, TestA )
+        self.assertEquals( b.__class__, TestB )
+        self.assertEquals( c.__class__, TestC )
+
+        a_f = Facade(TestA())
+        b_f = a_f.getb()
+        c_f = b_f.getc()
+
+        self.assertEquals( a_f.__class__, Facade(a).__class__ )
+        self.assertEquals( b_f.__class__, Facade(a).__class__ )
+        self.assertEquals( c_f.__class__, Facade(a).__class__ )
+
+        self.assertEquals( 'a', c_f.methoda() )
+
+    def test_model_interface(self):
+        a = Facade(TestA())
+
+        a.attribute_a = "a"
+        a.attribute_b = "b"
+        a.attribute_c = "c"
+
+        self.assertEquals( a.attribute_a, "a")
+        self.assertEquals( a.attribute_b, "b")
+        self.assertEquals( a.attribute_c, "c")
 
 if __name__ == '__main__':
     unittest.main()
