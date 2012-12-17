@@ -17,7 +17,7 @@ if USE_CALIENDO:
         
 class Wrapper( object ):
   """
-  The Caliendo facade. Extends the dict object. Pass the initializer an object
+  The Caliendo facade. Extends the Python object. Pass the initializer an object
   and the Facade will wrap all the public methods. Built-in methods
   (__somemethod__) and private methods (__somemethod) will not be copied. The
   Facade actually maintains a reference to the original object's methods so the
@@ -27,7 +27,10 @@ class Wrapper( object ):
   last_cached = None
 
   def delete_last_cached(self):
-    return delete_io( self.last_cached )
+      """
+      Deletes the last object that was cached by this instance of caliendo's Facade
+      """
+      return delete_io( self.last_cached )
 
   def get_hash(self, args, trace_string, kwargs ):
       return (str(frozenset(util.serialize_args(args))) + "\n" +
