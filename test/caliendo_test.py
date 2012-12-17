@@ -255,7 +255,10 @@ class  CaliendoTestCase(unittest.TestCase):
         a.attribute_a = "a"
         a.attribute_b = "b"
         a.attribute_c = "c"
-        
+
+        self.assertEquals( a.attribute_a, "a")
+        self.assertEquals( a.attribute_b, "b")
+        self.assertEquals( a.attribute_c, "c")
 
 if __name__ == '__main__':
     unittest.main()
