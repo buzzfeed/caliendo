@@ -15,9 +15,7 @@ if USE_CALIENDO:
     else:
         from caliendo.db.sqlite import *
         
-import sys
-
-class Facade( object ):
+class Wrapper( object ):
   """
   The Caliendo facade. Extends the dict object. Pass the initializer an object
   and the Facade will wrap all the public methods. Built-in methods
@@ -26,9 +24,16 @@ class Facade( object ):
   state of that object is manipulated transparently as the Facade methods are
   called. 
   """
+  last_cached = None
 
   def delete_last_cached(self):
     return delete_io( self.last_cached )
+
+  def get_hash(self, args, trace_string, kwargs ):
+      return (str(frozenset(util.serialize_args(args))) + "\n" +
+                              str( counter.counter.get_from_trace( trace_string ) ) + "\n" +
+                              str(frozenset(util.serialize_args(kwargs))) + "\n" +
+                              trace_string + "\n" )
 
   def wrap( self, method_name ):
     """
@@ -41,17 +46,11 @@ class Facade( object ):
     :rtype: lambda function.
     """
     def append_and_return( self, *args, **kwargs ):
-      current_frame     = inspect.currentframe()
-      trace_string      = ""
-      while current_frame.f_back:
-        trace_string = trace_string + current_frame.f_back.f_code.co_name + " "
-        current_frame = current_frame.f_back 
+      trace_string      = method_name + " "
+      for f in inspect.stack():
+        trace_string = trace_string + f[1] + " " + f[3] + " "
 
-      to_hash = (str(frozenset(util.serialize_args(args))) + "\n" +
-                              str( counter.counter.get_from_trace( trace_string ) ) + "\n" +
-                              str(frozenset(util.serialize_args(kwargs))) + "\n" +
-                              trace_string + "\n" )
-
+      to_hash                = self.get_hash(args, trace_string, kwargs)
       call_hash              = sha1( to_hash ).hexdigest()
       cd                     = call_descriptor.fetch( call_hash )
       if cd:
@@ -59,6 +58,7 @@ class Facade( object ):
       else:
         returnval = (self.__store__['methods'][method_name])(*args, **kwargs)
         cd = call_descriptor.CallDescriptor( hash      = call_hash,
+                                             stack     = trace_string,
                                              method    = method_name,
                                              returnval = returnval,
                                              args      = args,
@@ -67,7 +67,7 @@ class Facade( object ):
         self.last_cached = call_hash
         return cd.returnval
 
-    return lambda *args, **kwargs: append_and_return( self, *args, **kwargs )
+    return lambda *args, **kwargs: Facade( append_and_return( self, *args, **kwargs ) )
 
   def __getattr__( self, key ):
     if key not in self.__store__:
@@ -75,6 +75,7 @@ class Facade( object ):
     return self.__store__[ key ]
 
   def __init__( self, o ):
+
     self.__store__ = dict()
     store = self.__store__
     store[ 'methods' ] = {}
@@ -86,14 +87,27 @@ class Facade( object ):
                 ret_val                                = self.wrap( method_name )
                 self.__store__[ method_name ]          = ret_val
             elif '__' not in method_name:
-                pass#print method_name
+                pass
         else:
             self.__store__[ method_name ]              = eval( "o." + method_name )
 
-if not USE_CALIENDO:
-  def Facade( some_instance ):
-    return some_instance # Just give it back.
+def __is_primitive(var):
+  primitives = ( float, long, str, int, dict, list, unicode )
+  for primitive in primitives:
+      if type( var ) == primitive:
+          return True
+  return False
 
-if __name__ == '__main__':
-  cd = call_descriptor.CallDescriptor( hash=sha1("test").hexdigest(), method='someMethod', returnval='Some Value', args='Some Arguments' )
-  cd.save()
+def Facade( some_instance ):
+    """
+    Top-level interface to the Facade functionality. Determines what to return when passed arbitrary objects.
+
+    :param mixed some_instance: Anything.
+    
+    """
+    if not USE_CALIENDO:
+        return some_instance # Just give it back.
+    else:
+        if __is_primitive(some_instance):
+            return some_instance
+        return Wrapper( some_instance )
