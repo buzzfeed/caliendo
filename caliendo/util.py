@@ -39,6 +39,11 @@ def serialize_args( args ):
     return arg_list
 
 def seq():
+    """
+    Counts up sequentially from a number based on the current time
+
+    :rtype int:
+    """
     current_frame     = inspect.currentframe().f_back
     trace_string      = ""
     while current_frame.f_back:
@@ -47,6 +52,11 @@ def seq():
     return counter.get_from_trace(trace_string)
 
 def random(*args):
+    """
+    Counts up sequentially from a number based on the current time
+
+    :rtype int:
+    """
     current_frame     = inspect.currentframe().f_back
     trace_string      = ""
     while current_frame.f_back:
@@ -55,6 +65,9 @@ def random(*args):
     return counter.get_from_trace(trace_string)
 
 def attempt_drop( ):
+    """
+    Attempts to drop the tables relevant to caliendo's operation. This causes the entire cache to be cleared.
+    """
     drop = ["DROP TABLE test_io;", "DROP TABLE test_seed;"]
     conn = connection.connect()
     if not conn:
@@ -65,6 +78,9 @@ def attempt_drop( ):
     conn.close()
 
 def create_tables( ):
+    """
+    Attempts to set up the tables for Caliendo to run properly.
+    """
     create_test_io = """
             CREATE TABLE test_io (
               hash VARCHAR( 40 ) NOT NULL,
@@ -95,11 +111,25 @@ def create_tables( ):
       pass
 
 def delete( methodname, filename ):
+    """
+    Deletes entries corresponding to methodname in filename.
+
+    :param str methodname: The name of the method to target. This will delete ALL entries this method appears in the stack trace for.
+    :param str filename: The filename the method is executed in. (include .py extension)
+
+    :rtype int: The number of deleted entries
+    """
     hashes = get_unique_hashes()
+    deleted = 0
     for hash in hashes:
         cd = call_descriptor.fetch( hash )
         if methodname in cd.stack and filename in cd.stack:
             delete_io( hash )
+            deleted = deleted + 1
+    return deleted
 
 def recache( ):
+    """
+    Clear the entire database cache at once.
+    """
     attempt_drop( )
