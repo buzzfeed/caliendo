@@ -120,7 +120,7 @@ def recache( methodname=None, filename=None ):
     :rtype int: The number of deleted entries
     """
     if not methodname and not filename:
-        recache()
+        attempt_drop()
         return -1
     else:
         reqd_strings = []

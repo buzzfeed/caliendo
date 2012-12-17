@@ -8,6 +8,7 @@ os.environ['USE_CALIENDO'] = 'True'
 
 from caliendo import config
 
+import caliendo
 from caliendo.call_descriptor import CallDescriptor, fetch
 from caliendo.facade import Facade
 from caliendo.util import serialize_args
@@ -165,6 +166,61 @@ class  CaliendoTestCase(unittest.TestCase):
             os.remove(output.name)
 
         self.assertEqual(result, expected)
+
+    def test_recache(self):
+        mtc = TestC( )
+        mtc_f = Facade( mtc )
+
+        hashes = []
+
+        self.assertEquals( mtc.methoda( ), mtc_f.methoda( ) )
+        hashes.append( mtc_f.last_cached )
+        self.assertEquals( mtc.methodb( ), mtc_f.methodb( ) )
+        hashes.append( mtc_f.last_cached )
+        self.assertEquals( mtc_f.methoda( ), "a" )
+        hashes.append( mtc_f.last_cached )
+
+        self.assertEquals( mtc_f.increment( ), 1 )
+        hashes.append( mtc_f.last_cached )
+        self.assertEquals( mtc_f.increment( ), 2 ) 
+        hashes.append( mtc_f.last_cached )
+        self.assertEquals( mtc_f.increment( ), 3 ) 
+        hashes.append( mtc_f.last_cached )
+        self.assertEquals( mtc_f.increment( ), 4 )
+        hashes.append( mtc_f.last_cached )
+
+        # Ensure hashes are now in db:
+        for hash in hashes:
+            cd = fetch( hash )
+            self.assertEquals( cd.hash, hash )
+
+        # Delete some:
+        caliendo.util.recache( 'methodb', 'caliendo_test.py' )
+        caliendo.util.recache( 'methoda', 'caliendo_test.py' )
+
+        # Ensure they're gone:
+        methodb = hashes[0]
+        methoda = hashes[1]
+        cd = fetch( methodb )
+
+        self.assertIsNone( cd, "Method b failed to recache." )
+        cd = fetch( methoda )
+
+        self.assertIsNone( cd, "Method a failed to recache." )
+
+        # Ensure the rest are there:
+        hashes = hashes[3:]
+        for hash in hashes:
+            cd = fetch( hash )
+            self.assertEquals( cd.hash, hash )
+
+        # Delete them ALL:
+        caliendo.util.recache()
+
+        #Ensure they're all gone:
+        for hash in hashes:
+            cd = fetch( hash )
+            self.assertIsNone( cd )
 
 if __name__ == '__main__':
     unittest.main()

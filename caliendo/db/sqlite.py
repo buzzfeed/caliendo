@@ -139,7 +139,7 @@ def get_unique_hashes():
         sql = "SELECT DISTINCT hash FROM test_io;"
         con = connection.connect()
         cur = con.cursor()
-        res = cur.execute(sql)
+        res = list(cur.execute(sql))
     except Exception, e:
         sys.stderr.write( "Caliendo failed in get_unique_hashes: " + e.message + "\n" )
     finally:

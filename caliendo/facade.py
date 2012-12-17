@@ -24,6 +24,7 @@ class Facade( object ):
   state of that object is manipulated transparently as the Facade methods are
   called. 
   """
+  last_cached = None
 
   def delete_last_cached(self):
     return delete_io( self.last_cached )
@@ -45,7 +46,7 @@ class Facade( object ):
     :rtype: lambda function.
     """
     def append_and_return( self, *args, **kwargs ):
-      trace_string      = ""
+      trace_string      = method_name + " "
       for f in inspect.stack():
         trace_string = trace_string + f[1] + " " + f[3] + " "
 
@@ -85,7 +86,7 @@ class Facade( object ):
                 ret_val                                = self.wrap( method_name )
                 self.__store__[ method_name ]          = ret_val
             elif '__' not in method_name:
-                pass#print method_name
+                pass
         else:
             self.__store__[ method_name ]              = eval( "o." + method_name )
 
