@@ -6,9 +6,10 @@ import os
 
 os.environ['USE_CALIENDO'] = 'True'
 
+from caliendo import config
+
 from caliendo.call_descriptor import CallDescriptor, fetch
 from caliendo.facade import Facade
-from caliendo import config
 from caliendo.util import serialize_args
 
 USE_CALIENDO = config.should_use_caliendo( )
