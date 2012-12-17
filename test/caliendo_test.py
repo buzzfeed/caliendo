@@ -249,6 +249,14 @@ class  CaliendoTestCase(unittest.TestCase):
 
         self.assertEquals( 'a', c_f.methoda() )
 
+    def test_model_interface(self):
+        a = Facade(TestA())
+
+        a.attribute_a = "a"
+        a.attribute_b = "b"
+        a.attribute_c = "c"
+        
+
 if __name__ == '__main__':
     unittest.main()
 

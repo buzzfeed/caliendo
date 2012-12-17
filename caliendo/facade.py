@@ -113,4 +113,4 @@ def Facade( some_instance ):
     else:
         if __is_primitive(some_instance):
             return some_instance
-        return Wrapper( some_instance )
+        return Wrapper(some_instance)
