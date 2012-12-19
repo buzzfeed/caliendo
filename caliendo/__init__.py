@@ -1,11 +1,14 @@
 import os
 import random as random_r
 import time
+import sys
 
+from caliendo.config import should_use_caliendo
 from caliendo import util
-from caliendo import config
 
-USE_CALIENDO = config.should_use_caliendo( )
+import logging
+
+USE_CALIENDO = should_use_caliendo( )
 
 if USE_CALIENDO:
     # If the supporting db table doesn't exist; create it.
@@ -26,4 +29,4 @@ else:
         return random_r.random()
 
 def recache():
-  util.recache()
+    util.recache()

@@ -17,4 +17,13 @@ setup(
     author_email='andrew.kelleher@buzzfeed.com',
     description='A facade for wrapping API methods for logging i/o',
     long_description='A facade for wrapping API methods for logging i/o',
+    install_requires=[
+        'Fabric==1.5.1',
+        'MySQL-python==1.2.4c1',
+        'nose==1.2.1',
+        'paramiko==1.9.0',
+        'pycrypto==2.6',
+        'pysqlite==2.6.3',
+        'wsgiref==0.1.2'
+    ]
 )

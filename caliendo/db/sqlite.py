@@ -1,10 +1,11 @@
 from sqlite3 import connect as sqlite_connect
 import sqlite3
-import sys
 
-from caliendo import config
+import caliendo
+from caliendo.logger import get_logger
 
-CONFIG = config.get_database_config()
+logger = get_logger(__name__)
+CONFIG = caliendo.config.get_database_config()
 
 class Connection():
     def __init__( self ):
@@ -46,7 +47,7 @@ def insert_io( args ):
         res = cur.execute( sql, args )
         con.commit()
     except:
-        sys.stderr.write( "Caliendo failed to execute commit to sqlite db\n" )
+        logger.warning( "Caliendo failed to execute commit to sqlite db\n" )
     finally:
         if con:
             con.close()
@@ -62,7 +63,7 @@ def update_io( args ):
         res = cur.execute( sql, args )
         con.commit()
     except Exception, e:
-        sys.stderr.write( "Caliendo failed to update a record: " + e.message + "\n" )
+        logger.warning( "Caliendo failed to update a record: " + e.message + "\n" )
     finally:
         if con:
             con.close()
@@ -78,7 +79,7 @@ def select_io( hash ):
         cur.execute( sql )
         res = cur.fetchall()
     except Exception, e:
-        sys.stderr.write( "Caliendo failed to select a record from the db: " + e.message + "\n" )
+        logger.warning( "Caliendo failed to select a record from the db: " + e.message + "\n" )
     finally:
         if con:
             con.close()
@@ -94,7 +95,7 @@ def insert_test( hash, random, seq ):
         cur.execute( sql, {'hash': hash, 'random': random, 'seq': seq} )
         con.commit()
     except Exception, e:
-        sys.stderr.write( "Caliendo failed in insert_test: " + e.message + "\n" )
+        logger.warning( "Caliendo failed in insert_test: " + e.message + "\n" )
     finally:
         if con:
             con.close()
@@ -110,7 +111,7 @@ def select_test( hash ):
         cur.execute( sql )
         res = cur.fetchall()
     except Exception, e:
-        sys.stderr.write( "Caliendo failed in select_test: " + e.message + "\n" )
+        logger.warning( "Caliendo failed in select_test: " + e.message + "\n" )
     finally:
         if con:
             con.close()
@@ -126,7 +127,7 @@ def delete_io( hash ):
         res = cur.execute( sql )
         con.commit()
     except Exception, e:
-        sys.stderr.write( "Caliendo failed in delete_io: " + e.message + "\n" )
+        logger.warning( "Caliendo failed in delete_io: " + e.message + "\n" )
     finally:
         if con:
             con.close()
@@ -141,7 +142,7 @@ def get_unique_hashes():
         cur = con.cursor()
         res = list(cur.execute(sql))
     except Exception, e:
-        sys.stderr.write( "Caliendo failed in get_unique_hashes: " + e.message + "\n" )
+        logger.warning( "Caliendo failed in get_unique_hashes: " + e.message + "\n" )
     finally:
         if con:
             con.close()

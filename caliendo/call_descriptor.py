@@ -8,9 +8,9 @@ CONFIG       = config.get_database_config( )
 
 if USE_CALIENDO:
     if 'mysql' in CONFIG['ENGINE']:
-        from caliendo.db.mysql import *
+        from caliendo.db.mysql import insert_io, select_io, delete_io, connection
     else:
-        from caliendo.db.sqlite import *
+        from caliendo.db.sqlite import insert_io, select_io, delete_io, connection
 
 def fetch( hash ):
     """

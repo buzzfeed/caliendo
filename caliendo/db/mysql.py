@@ -1,10 +1,14 @@
 import sys
 
+import logging
+
 from MySQLdb import connect as mysql_connect
 
-from caliendo import config
+import caliendo
+from caliendo.logger import get_logger
 
-CONFIG = config.get_database_config( )
+logger = get_logger(__name__)
+CONFIG = caliendo.config.get_database_config( )
 
 class Connection():
     def __init__( self ):
@@ -50,7 +54,7 @@ def update_io( args ):
         cur = con.cursor()
         res = cur.execute( sql, args )
     except:
-        sys.stderr.write( "Caliendo failed in update_io: " + str(sys.exc_info()) + "\n" )
+        logger.warning( "Caliendo failed in update_io: " + str(sys.exc_info()) + "\n" )
     finally:
         if con.open:
             con.close()
@@ -65,7 +69,7 @@ def select_io( hash ):
         cur.execute( sql )
         res = cur.fetchall()
     except:
-        sys.stderr.write( "Caliendo failed in select_io: " + str(sys.exc_info()) + "\n" )
+        logger.warning( "Caliendo failed in select_io: " + str(sys.exc_info()) + "\n" )
     finally:
         if con.open:
             con.close()
@@ -78,7 +82,7 @@ def insert_test( hash, random, seq ):
         cur = con.cursor()
         cur.execute( sql, {'hash': hash, 'random': random, 'seq': seq} )
     except:
-        sys.stderr.write( "Caliendo failed in insert_test: " + str(sys.exc_info()) + "\n" )
+        logger.warning( "Caliendo failed in insert_test: " + str(sys.exc_info()) + "\n" )
     finally:
         if con.open:
             con.close()
@@ -91,7 +95,7 @@ def select_test( hash ):
         cur.execute( sql )
         res = cur.fetchall()
     except:
-        sys.stderr.write( "Caliendo failed in select_test: " + str(sys.exc_info()) + "\n" )
+        logger.warning( "Caliendo failed in select_test: " + str(sys.exc_info()) + "\n" )
     finally:
         if con.open:
             con.close()
@@ -105,7 +109,7 @@ def delete_io( hash ):
         cur = con.cursor()
         res = cur.execute( sql, { 'hash': hash } )
     except:
-        sys.stderr.write( "Caliendo failed in delete_io: " + str(sys.exc_info()) + "\n" )
+        logger.warning( "Caliendo failed in delete_io: " + str(sys.exc_info()) + "\n" )
     finally:
         if con.open:
             con.close()
@@ -120,7 +124,7 @@ def get_unique_hashes():
         cur.execute(sql)
         res = cur.fetchall()
     except:
-        sys.stderr.write( "Caliendo failed in get_unique_hashes: " + str(sys.exc_info()))
+        logger.warning( "Caliendo failed in get_unique_hashes: " + str(sys.exc_info()))
     finally:
         if con.open:
             con.close()

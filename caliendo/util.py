@@ -1,4 +1,3 @@
-import sys
 import inspect
 
 from caliendo import config
@@ -10,10 +9,9 @@ CONFIG       = config.get_database_config( )
 
 if USE_CALIENDO:
     if 'mysql' in CONFIG['ENGINE']:
-        from caliendo.db.mysql import *
+        from caliendo.db.mysql import delete_io, get_unique_hashes, connection
     else:
-        from caliendo.db.sqlite import *
-
+        from caliendo.db.sqlite import delete_io, get_unique_hashes, connection
 
 def serialize_args( args ):
     """
