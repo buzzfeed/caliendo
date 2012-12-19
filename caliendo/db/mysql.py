@@ -1,7 +1,5 @@
 import sys
 
-import logging
-
 from MySQLdb import connect as mysql_connect
 
 import caliendo

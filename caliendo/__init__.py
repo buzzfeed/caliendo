@@ -1,12 +1,9 @@
 import os
 import random as random_r
 import time
-import sys
 
 from caliendo.config import should_use_caliendo
 from caliendo import util
-
-import logging
 
 USE_CALIENDO = should_use_caliendo( )
 
