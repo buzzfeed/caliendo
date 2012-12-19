@@ -3,4 +3,6 @@
 *.pyc
 *.sw*
 dist
+build/
+*.egg
 caliendo.egg*

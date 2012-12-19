@@ -17,4 +17,12 @@ setup(
     author_email='andrew.kelleher@buzzfeed.com',
     description='A facade for wrapping API methods for logging i/o',
     long_description='A facade for wrapping API methods for logging i/o',
+    test_suite='test.caliendo_test',
+    install_requires=[
+        'MySQL-python==1.2.4c1',
+        'paramiko==1.9.0',
+        'pycrypto==2.6',
+        'pysqlite==2.6.3',
+        'wsgiref==0.1.2'
+    ],
 )
