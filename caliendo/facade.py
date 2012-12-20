@@ -138,7 +138,13 @@ class Wrapper( object ):
 
 
   def __init__( self, o, exclusion_list=[] ):
+    """
+    The init method for the Wrapper class.
 
+    :param mixed o: Some object to wrap.
+    :param list exclusion_list: The list of types NOT to wrap
+
+    """
     self.__store__ = dict()
     store = self.__store__
     store[ 'methods' ] = {}
