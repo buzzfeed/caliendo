@@ -8,9 +8,11 @@ CONFIG       = config.get_database_config( )
 
 if USE_CALIENDO:
     if 'mysql' in CONFIG['ENGINE']:
-        from caliendo.db.mysql import insert_test, select_test, connection
+        from caliendo.db.mysql import insert_test, select_test
+    elif 'flatfiles' in CONFIG['ENGINE']:
+        from caliendo.db.flatfiles import insert_test, select_test
     else:
-        from caliendo.db.sqlite import insert_test, select_test, connection
+        from caliendo.db.sqlite import insert_test, select_test
 
 class Counter:
 

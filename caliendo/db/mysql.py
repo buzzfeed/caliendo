@@ -45,19 +45,6 @@ def insert_io( args ):
 
     return cur.execute( sql, a )
 
-def update_io( args ):
-    try:
-        sql = "UPDATE test_io SET methodname=%(methodname)s, args=%(args)s, returnval=%(returnval)s, stack=%(stack)s WHERE hash=%(hash)s"
-        con = connection.connect()
-        cur = con.cursor()
-        res = cur.execute( sql, args )
-    except:
-        logger.warning( "Caliendo failed in update_io: " + str(sys.exc_info()) + "\n" )
-    finally:
-        if con.open:
-            con.close()
-    return res
-
 def select_io( hash ):
     try:
         res = None

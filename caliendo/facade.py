@@ -12,6 +12,8 @@ CONFIG       = config.get_database_config( )
 if USE_CALIENDO:
     if 'mysql' in CONFIG['ENGINE']:
         from caliendo.db.mysql import delete_io
+    elif 'flatfiles' in CONFIG['ENGINE']:
+        from caliendo.db.flatfiles import delete_io
     else:
         from caliendo.db.sqlite import delete_io
 

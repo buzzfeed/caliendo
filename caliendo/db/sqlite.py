@@ -53,22 +53,6 @@ def insert_io( args ):
             con.close()
         return res
 
-def update_io( args ):
-    try:
-        con = None
-        res = None
-        sql = "UPDATE test_io SET methodname=:methodname, args=:args, returnval=:returnval, stack=:stack WHERE hash=:hash;"
-        con = connection.connect()
-        cur = con.cursor()
-        res = cur.execute( sql, args )
-        con.commit()
-    except Exception, e:
-        logger.warning( "Caliendo failed to update a record: " + e.message + "\n" )
-    finally:
-        if con:
-            con.close()
-    return res
-
 def select_io( hash ):
     try:
         con = None
