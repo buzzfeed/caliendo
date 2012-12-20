@@ -4,14 +4,15 @@ from caliendo import config
 from caliendo.counter import counter
 from caliendo import call_descriptor
 
-USE_CALIENDO = config.should_use_caliendo( )
-CONFIG       = config.get_database_config( )
+USE_CALIENDO  = config.should_use_caliendo( )
+CONFIG        = config.get_database_config( )
 
 if USE_CALIENDO:
     if 'mysql' in CONFIG['ENGINE']:
         from caliendo.db.mysql import delete_io, get_unique_hashes, connection
     else:
         from caliendo.db.sqlite import delete_io, get_unique_hashes, connection
+
 
 def serialize_args( args ):
     """
@@ -79,7 +80,6 @@ def create_tables( ):
     """
     Attempts to set up the tables for Caliendo to run properly.
     """
-    print "CREATING TABLES..."
     create_test_io = """
             CREATE TABLE test_io (
               hash VARCHAR( 40 ) NOT NULL,
