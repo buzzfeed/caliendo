@@ -16,6 +16,11 @@ from caliendo.util import serialize_args
 USE_CALIENDO = config.should_use_caliendo( )
 CONFIG       = config.get_database_config( )
 
+class TestModel:
+    def __init__(self, a, b):
+        setattr( self, 'a', a )
+        setattr( self, 'b', b )
+
 class CallOnceEver:
     __die = 0
     def update(self):
@@ -34,7 +39,15 @@ class TestB:
         return TestC()
 
 class TestC:
-    __private_var = 0
+    __private_var   = 0
+    lambda_function = lambda s, x: x * 2
+    test_a_class    = TestA
+    some_model      = TestModel( a=1, b=2 )
+    primitive_a     = 'a'
+    primitive_b     = 1
+    primitive_c     = [ 1 ]
+    primitive_d     = { 'a': 1 }
+
     def methoda(self):
         return "a"
     def methodb(self):
@@ -45,6 +58,7 @@ class TestC:
         self.__private_var = self.__private_var + 1
         return self.__private_var
 
+    
 class  CaliendoTestCase(unittest.TestCase):
 
     def test_call_descriptor(self):
@@ -248,6 +262,52 @@ class  CaliendoTestCase(unittest.TestCase):
         self.assertEquals( c_f.__class__, Facade(a).__class__ )
 
         self.assertEquals( 'a', c_f.methoda() )
+
+    def test_various_attribute_types(self):
+        c = Facade(TestC())
+
+        # 'Primitives'
+        self.assertEquals( c.primitive_a, 'a' )
+        self.assertEquals( c.primitive_b, 1 )
+        self.assertEquals( c.primitive_c, [ 1 ] )
+        self.assertEquals( c.primitive_d, { 'a': 1 } )
+
+        # Instance methods
+        self.assertEquals( c.methoda(), 'a' )
+        self.assertEquals( c.methodb(), 'b' )
+
+        # Lambda functions
+        self.assertEquals( c.lambda_function( 2 ), 4 )
+
+        # Models
+        self.assertEquals( c.some_model.a, 1 )
+        self.assertEquals( c.some_model.b, 2 )
+
+        # Classes
+        self.assertEquals( c.test_a_class( ).wrapper__unwrap( ).__class__, TestA )
+
+    def test_various_attribute_types_after_chaining(self):
+        c = Facade(TestA()).getb().getc()
+
+        # 'Primitives'
+        self.assertEquals( c.primitive_a, 'a' )
+        self.assertEquals( c.primitive_b, 1 )
+        self.assertEquals( c.primitive_c, [ 1 ] )
+        self.assertEquals( c.primitive_d, { 'a': 1 } )
+
+        # Instance methods
+        self.assertEquals( c.methoda(), 'a' )
+        self.assertEquals( c.methodb(), 'b' )
+
+        # Lambda functions
+        self.assertEquals( c.lambda_function( 2 ), 4 )
+
+        # Models
+        self.assertEquals( c.some_model.a, 1 )
+        self.assertEquals( c.some_model.b, 2 )
+
+        # Classes
+        self.assertEquals( c.test_a_class( ).wrapper__unwrap( ).__class__, TestA )
 
     def test_model_interface(self):
         a = Facade(TestA())

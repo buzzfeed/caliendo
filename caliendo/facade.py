@@ -98,6 +98,9 @@ class Wrapper( object ):
         return Facade(val[1])
     return self.__store__[ key ]
 
+  def wrapper__get_store(self):
+      return self.__store__
+
 
   def __init__( self, o ):
 
@@ -119,6 +122,13 @@ class Wrapper( object ):
         else:
             self.__store__[ method_name ]              = eval( "o." + method_name )
 
+    try: # Fail gracefully for non-iterables
+        if o.wrapper__get_store: # For wrapping facades in a chain.
+            store = o.wrapper__get_store()
+            for key, val in store.items():
+                self.__store__[key] = val # TODO: Ensure we don't need to update/ namespace store['methods']
+    except:
+        pass
 
 def Facade( some_instance ):
     """

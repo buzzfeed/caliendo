@@ -79,6 +79,7 @@ def create_tables( ):
     """
     Attempts to set up the tables for Caliendo to run properly.
     """
+    print "CREATING TABLES..."
     create_test_io = """
             CREATE TABLE test_io (
               hash VARCHAR( 40 ) NOT NULL,
@@ -119,6 +120,7 @@ def recache( methodname=None, filename=None ):
     """
     if not methodname and not filename:
         attempt_drop()
+        create_tables()
         return -1
     else:
         reqd_strings = []
