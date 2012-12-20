@@ -1,3 +1,4 @@
+import inspect
 import tempfile
 import unittest
 import hashlib
@@ -11,6 +12,7 @@ from caliendo import config
 import caliendo
 from caliendo.call_descriptor import CallDescriptor, fetch
 from caliendo.facade import Facade
+from caliendo.facade import Wrapper
 from caliendo.util import serialize_args
 
 USE_CALIENDO = config.should_use_caliendo( )
@@ -319,6 +321,31 @@ class  CaliendoTestCase(unittest.TestCase):
         self.assertEquals( a.attribute_a, "a")
         self.assertEquals( a.attribute_b, "b")
         self.assertEquals( a.attribute_c, "c")
+
+    def test_exclusion_list(self):
+        # Ignore an instance:
+        a = Facade(TestA())
+
+        b = a.getb()
+        self.assertEquals( b.__class__, Wrapper )
+
+        a.wrapper__ignore( TestB )
+        b = a.getb()
+        self.assertEquals( b.__class__, TestB )
+
+        a.wrapper__unignore( TestB )
+        b = a.getb()
+        self.assertEquals( b.__class__, Wrapper )
+        
+        # Ignore a class:
+        c = Facade(TestC())
+
+        self.assertTrue( c.test_a_class().__class__, Wrapper )
+
+        c.wrapper__ignore( TestA )
+        a = c.test_a_class()
+        self.assertTrue( isinstance( a, TestA ) )
+        
 
 if __name__ == '__main__':
     unittest.main()
