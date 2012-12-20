@@ -24,12 +24,12 @@ def get_database_config( ):
             'HOST'    : ''
     }
     try:
+        if 'CALIENDO_CONN_STRING' in os.environ:
+            return dict( [ ( param[0], param[1] ) for param in [ p.split( '=' ) for p in os.environ['CALIENDO_CONN_STRING'].split(',') ] ] )
         if 'DJANGO_SETTINGS_MODULE' in os.environ:
             settings = __import__( os.environ[ 'DJANGO_SETTINGS_MODULE' ], globals(), locals(), [ 'DATABASES' ], -1 )
             if settings.DATABASES and settings.DATABASES['default']:
                 return settings.DATABASES[ 'default' ]
-        if 'CALIENDO_CONN_STRING' in os.environ:
-            return dict( [ ( param[0], param[1] ) for param in [ p.split( '=' ) for p in os.environ['CALIENDO_CONN_STRING'].split(',') ] ] )
     except:
         pass
     return default
