@@ -6,3 +6,5 @@ dist
 build/
 *.egg
 caliendo.egg*
+cache/
+seeds/

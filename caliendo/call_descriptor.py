@@ -8,9 +8,11 @@ CONFIG       = config.get_database_config( )
 
 if USE_CALIENDO:
     if 'mysql' in CONFIG['ENGINE']:
-        from caliendo.db.mysql import insert_io, select_io, delete_io, connection
+        from caliendo.db.mysql import insert_io, select_io, delete_io
+    elif 'flatfiles' in CONFIG['ENGINE']:
+        from caliendo.db.flatfiles import insert_io, select_io, delete_io
     else:
-        from caliendo.db.sqlite import insert_io, select_io, delete_io, connection
+        from caliendo.db.sqlite import insert_io, select_io, delete_io
 
 def fetch( hash ):
     """
@@ -21,6 +23,7 @@ def fetch( hash ):
     :rtype: CallDescriptor corresponding to the hash passed or None if it wasn't found.
     """
     res = select_io( hash )
+    
     if res:
       p = { 'methodname': '', 'returnval': '', 'args': '', 'stack': '' }
       for packet in res:
