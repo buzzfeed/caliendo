@@ -30,9 +30,6 @@ def insert_io( args ):
             pickle.dump(args, f)
     except IOError:
         logger.warning( "Caliendo failed to open " + filepath + ", check file permissions." )
-    finally:
-        if f:
-            f.close()
 
 def select_io( hash ):
     """
@@ -56,9 +53,7 @@ def select_io( hash ):
                 res += [(d['hash'], d['stack'], d['methodname'], d['returnval'], d['args'], d['packet_num'] )]
         except IOError:
             logger.warning( "Caliendo failed to open " + packet + " for reading." )
-        finally:
-            if f:
-                f.close()
+
     if not res:
         return []
     return res
@@ -81,9 +76,6 @@ def insert_test( hash, random, seq ):
             pickle.dump({'hash': hash, 'random': random, 'seq': seq }, f)
     except IOError:
         logger.warning( "Caliendo failed to open " + filepath + ", check file permissions." )
-    finally:
-        if f:
-            f.close()
 
 def select_test( hash ):
     """
@@ -102,9 +94,7 @@ def select_test( hash ):
             res = ( d['random'], d['seq'] )
     except IOError:
         logger.warning( "Caliendo failed to read " + filepath )
-    finally:
-        if f:
-            f.close()
+
     if res:
         return [res]
     return None
