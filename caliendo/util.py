@@ -10,6 +10,8 @@ CONFIG        = config.get_database_config( )
 if USE_CALIENDO:
     if 'mysql' in CONFIG['ENGINE']:
         from caliendo.db.mysql import delete_io, get_unique_hashes, connection
+    elif 'flatfiles' in CONFIG['ENGINE']:
+        from caliendo.db.flatfiles import delete_io, get_unique_hashes # No connection. It's ok.
     else:
         from caliendo.db.sqlite import delete_io, get_unique_hashes, connection
 
@@ -67,14 +69,17 @@ def attempt_drop( ):
     """
     Attempts to drop the tables relevant to caliendo's operation. This causes the entire cache to be cleared.
     """
-    drop = ["DROP TABLE test_io;", "DROP TABLE test_seed;"]
-    conn = connection.connect()
-    if not conn:
-        raise Exception( "Caliendo could not connect to the database" )
-    curs = conn.cursor()
-    for d in drop:
-        curs.execute( d )
-    conn.close()
+    try:
+        drop = ["DROP TABLE test_io;", "DROP TABLE test_seed;"]
+        conn = connection.connect()
+        if not conn:
+            raise Exception( "Caliendo could not connect to the database" )
+        curs = conn.cursor()
+        for d in drop:
+            curs.execute( d )
+        conn.close()
+    except:
+        pass # Fail gracefully if connection is not defined
 
 def create_tables( ):
     """
@@ -104,9 +109,9 @@ def create_tables( ):
         for sql in [ create_test_io, create_test_seeds ]:
             try:
                 curs.execute( sql )
-            except Exception, e:
+            except Exception:
                 pass
-    except Exception, e:
+    except Exception:
       pass
 
 def recache( methodname=None, filename=None ):
@@ -119,9 +124,11 @@ def recache( methodname=None, filename=None ):
     :rtype int: The number of deleted entries
     """
     if not methodname and not filename:
-        attempt_drop()
-        create_tables()
-        return -1
+        hashes = get_unique_hashes()
+        deleted = 0
+        for hash in hashes:
+            delete_io(hash)
+            deleted = deleted + 1
     else:
         reqd_strings = []
         if methodname:

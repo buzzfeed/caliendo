@@ -22,6 +22,13 @@ class Connection():
 connection = Connection()
 
 def insert_io( args ):
+    """
+    Inserts a method's i/o into the datastore
+
+    :param dict args: A dictionary of the hash, stack, packet_num, methodname, args, and returnval
+
+    :rtype None:
+    """
     try:
         con = None
         res = None
@@ -53,23 +60,14 @@ def insert_io( args ):
             con.close()
         return res
 
-def update_io( args ):
-    try:
-        con = None
-        res = None
-        sql = "UPDATE test_io SET methodname=:methodname, args=:args, returnval=:returnval, stack=:stack WHERE hash=:hash;"
-        con = connection.connect()
-        cur = con.cursor()
-        res = cur.execute( sql, args )
-        con.commit()
-    except Exception, e:
-        logger.warning( "Caliendo failed to update a record: " + e.message + "\n" )
-    finally:
-        if con:
-            con.close()
-    return res
-
 def select_io( hash ):
+    """
+    Returns the relevant i/o for a method whose call is characterized by the hash
+
+    :param hash: The hash for the CallDescriptor
+
+    :rtype list(tuple( hash, stack, methodname, returnval, args, packet_num )):
+    """
     try:
         con = None
         res = None
@@ -86,6 +84,15 @@ def select_io( hash ):
     return res
 
 def insert_test( hash, random, seq ):
+    """
+    Inserts a random value and sequence for a local call counter
+
+    :param str hash: The hash for the call
+    :param str random: A random number for the seed
+    :param str seq: An integer from which to increment on the local call
+
+    :rtype None:
+    """
     try:
         con = None
         res = None
@@ -102,6 +109,13 @@ def insert_test( hash, random, seq ):
     return res
 
 def select_test( hash ):
+    """
+    Returns the seed values associated with a function call
+
+    :param str hash: The hash for the function call
+
+    :rtype [tuple(<string>, <string>)]:
+    """
     try:
         res = None
         con = None
@@ -118,6 +132,13 @@ def select_test( hash ):
     return res
 
 def delete_io( hash ):
+    """
+    Deletes records associated with a particular hash
+
+    :param str hash: The hash
+
+    :rtype int: The number of records deleted
+    """
     try:
         con = None
         res = None
@@ -134,6 +155,11 @@ def delete_io( hash ):
     return res
 
 def get_unique_hashes():
+    """
+    Returns all the hashes for cached calls
+
+    :rtype list(<string>)
+    """
     try:
         res = None
         con = None
