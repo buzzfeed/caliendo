@@ -1,4 +1,5 @@
 import os
+import sys
 import cPickle as pickle
 
 from caliendo.logger import get_logger
@@ -7,6 +8,11 @@ logger = get_logger(__name__)
 
 CACHE_DIRECTORY = os.path.abspath(__name__).replace( 'caliendo.db.flatfiles', '' ) + 'cache/'
 SEED_DIRECTORY = os.path.abspath(__name__).replace('caliendo.db.flatfiles', '' ) + 'seeds/'
+
+if os.environ.get( 'CALIENDO_CACHE_PREFIX' ):
+    cache_path = os.environ.get( 'CALIENDO_CACHE_PREFIX' )
+    CACHE_DIRECTORY = os.path.join( cache_path, 'cache/' )
+    SEED_DIRECTORY = os.path.join( cache_path, 'seeds/' )
 
 if not os.path.exists( CACHE_DIRECTORY ):
     os.makedirs(CACHE_DIRECTORY)
