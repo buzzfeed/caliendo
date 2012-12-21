@@ -103,6 +103,7 @@ def select_test( hash ):
     :rtype [tuple(<string>, <string>)]:
     """
     try:
+        con = None
         res = None
         sql = "SELECT random, seq FROM test_seed WHERE hash = '%s'" % hash
         con = connection.connect()
