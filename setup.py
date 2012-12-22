@@ -20,6 +20,5 @@ setup(
     test_suite='test.caliendo_test',
     install_requires=[
         'MySQL-python>=1.2.3',
-        'pysqlite==2.6.3',
     ],
 )
