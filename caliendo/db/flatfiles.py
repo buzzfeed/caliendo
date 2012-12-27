@@ -14,6 +14,9 @@ if os.environ.get( 'CALIENDO_CACHE_PREFIX' ):
     CACHE_DIRECTORY = os.path.join( cache_path, 'cache/' )
     SEED_DIRECTORY = os.path.join( cache_path, 'seeds/' )
 
+print CACHE_DIRECTORY
+print SEED_DIRECTORY
+
 if not os.path.exists( CACHE_DIRECTORY ):
     os.makedirs(CACHE_DIRECTORY)
 if not os.path.exists( SEED_DIRECTORY ):

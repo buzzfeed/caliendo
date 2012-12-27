@@ -1,4 +1,5 @@
 from hashlib import sha1
+import datetime
 import inspect
 
 from caliendo import util
@@ -18,7 +19,7 @@ if USE_CALIENDO:
         from caliendo.db.sqlite import delete_io
 
 def is_primitive(var):
-    primitives = ( float, long, str, int, dict, list, unicode, tuple, set, frozenset )
+    primitives = ( float, long, str, int, dict, list, unicode, tuple, set, frozenset, datetime.datetime, datetime.timedelta )
     for primitive in primitives:
         if type( var ) == primitive:
             return True
@@ -138,6 +139,17 @@ class Wrapper( object ):
   def wrapper__get_store(self):
       return self.__store__
 
+  def get_members(self, o):
+      try:
+          members = inspect.getmembers(o)
+      except KeyError:
+          try:
+              class_members = inspect.getmembers(o.__class__)
+              for name, member in class_members:
+                  members = [ ( name, getattr( o, name ) ) ]
+          except:
+              raise Exception( "Could not inspect object: " + str( o ) )
+      return members
 
   def __init__( self, o, exclusion_list=[] ):
     """
@@ -153,21 +165,28 @@ class Wrapper( object ):
     self.__original_object = o
     self.__exclusion_list = exclusion_list
 
-    for method_name, member in inspect.getmembers( o ):
+    for method_name, member in self.get_members(o):
         if USE_CALIENDO:
             if should_exclude( eval( "o." + method_name ), self.__exclusion_list ):
                 self.__store__[ method_name ] = eval( "o." + method_name )
                 continue
             if inspect.ismethod(member) or inspect.isfunction(member) or inspect.isclass(member):
                 self.__store__['methods'][method_name] = eval( "o." + method_name )
-                ret_val                                = self.__wrap( method_name )
-                self.__store__[ method_name ]          = ret_val
+                self.__store__['methods'][method_name[0].lower() + method_name[1:]] = eval( "o." + method_name )
+                ret_val = self.__wrap( method_name )
+                self.__store__[ method_name ] = ret_val
+                self.__store__[ method_name[0].lower() + method_name[1:] ] = ret_val
             elif not is_primitive(member):
                 self.__store__[ method_name ] = ( 'attr', member )
+                self.__store__[ method_name[0].lower() + method_name[1:] ] = ( 'attr', member )
             else:
                 self.__store__[ method_name ] = eval( "o." + method_name )
+                self.__store__[ method_name[0].lower() + method_name[1:] ] = eval( "o." + method_name )
+
         else:
-            self.__store__[ method_name ]              = eval( "o." + method_name )
+            self.__store__[ method_name ] = eval( "o." + method_name )
+            self.__store__[ method_name[0].lower() + method_name[1:] ] = eval( "o." + method_name )
+
 
     try: # Fail gracefully for non-iterables
         if o.wrapper__get_store: # For wrapping facades in a chain.
