@@ -147,8 +147,8 @@ class Wrapper( object ):
               class_members = inspect.getmembers(o.__class__)
               for name, member in class_members:
                   members = [ ( name, getattr( o, name ) ) ]
-          except:
-              raise Exception( "Could not inspect object: " + str( o ) )
+          except Exception, e:
+              return []
       return members
 
   def __init__( self, o, exclusion_list=[] ):
@@ -165,7 +165,15 @@ class Wrapper( object ):
     self.__original_object = o
     self.__exclusion_list = exclusion_list
 
-    for method_name, member in self.get_members(o):
+    members = self.get_members(o)
+
+    if not members: 
+        self.wrapper__inspected = False
+        return
+    else:
+        self.wrapper__inspected = True
+
+    for method_name, member in members:
         if USE_CALIENDO:
             if should_exclude( eval( "o." + method_name ), self.__exclusion_list ):
                 self.__store__[ method_name ] = eval( "o." + method_name )
@@ -215,4 +223,7 @@ def Facade( some_instance, exclusion_list=[] ):
     else:
         if is_primitive(some_instance):
             return some_instance
-        return Wrapper(some_instance, list(exclusion_list))
+        wrapper = Wrapper(some_instance, list(exclusion_list))
+        if wrapper.wrapper__inspected:
+            return wrapper
+        return some_instance

@@ -41,6 +41,45 @@ def fetch( hash ):
     return None
 
 
+class Buf:
+  def __init__(self, methodname, args, returnval, stack):
+
+    args                   = pickle.dumps( args )
+    try:
+      returnval              = pickle.dumps( returnval )
+    except Exception, e:
+      print "Failed to pickle returnval: " + str( returnval ) + " " + str( e )
+    self.__data            = "".join([ methodname, args, returnval, stack ])
+    self.__methodname_len  = len( methodname )
+    self.__args_len        = len( args )
+    self.__returnval_len   = len( returnval )
+    self.__stack_len       = len( stack )
+    self.length            = self.__methodname_len + self.__args_len + self.__returnval_len + self.__stack_len
+    self.char              = 0
+
+  def next(self):
+    if self.char + 1 > self.length:
+      raise StopIteration
+
+    c         = self.__data[ self.char ]
+    attr      = self.attr()
+    self.char = self.char + 1
+
+    return c, attr
+
+  def __iter__(self):
+    return self
+
+  def attr(self):
+    if self.char < self.__methodname_len:
+      return 'methodname'
+    elif self.char < self.__methodname_len + self.__args_len:
+      return 'args'
+    elif self.char < self.__methodname_len + self.__args_len + self.__returnval_len:
+      return 'returnval'
+    else:
+      return 'stack'
+
 class CallDescriptor:
   """
   This is a basic model representing a function call. It saves the method name,
@@ -74,47 +113,9 @@ class CallDescriptor:
         'stack': ''
       }
 
-  def query_buffer(self, methodname, args, returnval, stack):
-    class Buf:
-      def __init__(self, methodname, args, returnval, stack):
-        args                   = pickle.dumps( args )
-        returnval              = pickle.dumps( returnval )
-        self.__data            = "".join([ methodname, args, returnval, stack ])
-        self.__methodname_len  = len( methodname )
-        self.__args_len        = len( args )
-        self.__returnval_len   = len( returnval )
-        self.__stack_len       = len( stack )
-        self.length            = self.__methodname_len + self.__args_len + self.__returnval_len + self.__stack_len
-        self.char              = 0
-
-      def next(self):
-        if self.char + 1 > self.length:
-          raise StopIteration
-
-        c         = self.__data[ self.char ]
-        attr      = self.attr()
-        self.char = self.char + 1
-
-        return c, attr
-
-      def __iter__(self):
-        return self
-
-      def attr(self):
-        if self.char < self.__methodname_len:
-          return 'methodname'
-        elif self.char < self.__methodname_len + self.__args_len:
-          return 'args'
-        elif self.char < self.__methodname_len + self.__args_len + self.__returnval_len:
-          return 'returnval'
-        else:
-          return 'stack'
-
-    return Buf( methodname, args, returnval, stack )
-
   def __enumerate_packets(self):
     max_packet_size  = 1024 # 1MB, prolly more like 8MB for 4b char size. MySQL default limit is 16
-    buffer           = self.query_buffer( self.methodname, self.args, self.returnval, self.stack )
+    buffer           = Buf( self.methodname, self.args, self.returnval, self.stack )
     packet_num       = 0
     packets          = [ ]
     while buffer.char < buffer.length:
