@@ -19,6 +19,10 @@ if USE_CALIENDO:
         from caliendo.db.sqlite import delete_io
 
 def is_primitive(var):
+    """
+    Checks if an object is in ( float, long, str, int, dict, list, unicode, tuple, set, frozenset, datetime.datetime, datetime.timedelta )
+    
+    """
     primitives = ( float, long, str, int, dict, list, unicode, tuple, set, frozenset, datetime.datetime, datetime.timedelta )
     for primitive in primitives:
         if type( var ) == primitive:
@@ -26,6 +30,10 @@ def is_primitive(var):
     return False
 
 def should_exclude(type_or_instance, exclusion_list):
+    """
+    Tests whether an object should be simply returned when being wrapped
+    
+    """
     if type_or_instance in exclusion_list: # Check class definition
         return True
     if type(type_or_instance) in exclusion_list: # Check instance type
@@ -38,8 +46,11 @@ def should_exclude(type_or_instance, exclusion_list):
 
     return False
 
-
 class LazyBones:
+    """
+    A simple wrapper for lazy-loading arbitrary classes
+    
+    """
     def __init__(self, cls, args, kwargs):
         self.__class  = cls
         self.__args   = args
@@ -96,10 +107,19 @@ class Wrapper( dict ):
 
     :rtype mixed:
     """
-    print "Returning original object..."
     return self['__original_object']
 
   def __get_hash(self, args, trace_string, kwargs ):
+      """
+      Returns the hash from a trace string, args, and kwargs
+
+      :param tuple args: The positional arguments to the function call
+      :param str trace_string: The serialized stack trace for the function call
+      :param dict kwargs: The keyword arguments to the function call
+
+      :rtype str: The sha1 hashed result of the inputs plus a thuper-sthecial counter incremented in the local context of the call
+      
+      """
       return (str(frozenset(util.serialize_args(args))) + "\n" +
                               str( counter.counter.get_from_trace( trace_string ) ) + "\n" +
                               str(frozenset(util.serialize_args(kwargs))) + "\n" +
@@ -107,6 +127,10 @@ class Wrapper( dict ):
 
 
   def __cache( self, method_name, *args, **kwargs ):
+    """
+    Store a call descriptor
+
+    """
     trace_string      = method_name + " "
     for f in inspect.stack():
       trace_string = trace_string + f[1] + " " + f[3] + " "
@@ -150,17 +174,11 @@ class Wrapper( dict ):
   def __getattr__( self, key ):
     if key not in self.__store__: # Attempt to lazy load the method (assuming __getattr__ is set on the incoming object)
         try:
-            print "Getting original object..."
             oo = self['__original_object']
-            print "Checking for class attribuet..."
-            print oo
             if hasattr( oo, '__class__' ) and oo.__class__ == LazyBones:
-                print "Initializing lazy bones..."
                 oo = oo.init()
-            print "Evaluating oo at ", key
             val = eval( "oo." + key )
-            print "Handing off to __handle any__"
-            self.__handle_any(oo, key, val)
+            self.__store_any(oo, key, val)
         except: 
             raise Exception( "Key, " + str( key ) + " has not been set in the facade and failed to lazy load! Method is undefined." )
 
@@ -172,50 +190,100 @@ class Wrapper( dict ):
     return self.__store__[ key ]
 
   def wrapper__get_store(self):
+      """
+      Returns the method/attribute store of the wrapper
+      
+      """
       return self.__store__
 
-  def __handle_callable(self, o, method_name, member):
+  def __store_callable(self, o, method_name, member):
+    """
+    Stores a callable member to the private __store__
+
+    :param mixed o: Any callable (function or method)
+    :param str method_name: The name of the attribute
+    :param mixed member: A reference to the member
+
+    """
     self.__store__['callables'][method_name] = eval( "o." + method_name )
     self.__store__['callables'][method_name[0].lower() + method_name[1:]] = eval( "o." + method_name )
     ret_val = self.__wrap( method_name )
     self.__store__[ method_name ] = ret_val
     self.__store__[ method_name[0].lower() + method_name[1:] ] = ret_val
 
-  def __handle_class(self, o, method_name, member):
-    self.__handle_callable( o, method_name, member )
+  def __store_class(self, o, method_name, member):
+    """
+    Stores a class to the private __store__
+
+    :param class o: The class to store
+    :param str method_name: The name of the method
+    :param class member: The actual class definition
+    """
+    self.__store_callable( o, method_name, member )
     
-  def __handle_nonprimitive(self, o, method_name, member):
+  def __store_nonprimitive(self, o, method_name, member):
+    """
+    Stores any 'non-primitive'. A primitive is in ( float, long, str, int, dict, list, unicode, tuple, set, frozenset, datetime.datetime, datetime.timedelta )
+
+    :param mixed o: The non-primitive to store
+    :param str method_name: The name of the attribute
+    :param mixed member: The reference to the non-primitive
+
+    """
     self.__store__[ method_name ] = ( 'attr', member )
     self.__store__[ method_name[0].lower() + method_name[1:] ] = ( 'attr', member )
 
-  def __handle_other(self, o, method_name, member):
+  def __store_other(self, o, method_name, member):
+    """
+    Stores a reference to an attribute on o
+
+    :param mixed o: Some object
+    :param str method_name: The name of the attribute
+    :param mixed member: The attribute
+    
+    """
     self.__store__[ method_name ] = eval( "o." + method_name )
     self.__store__[ method_name[0].lower() + method_name[1:] ] = eval( "o." + method_name )
 
   def __save_reference(self, o, cls, args, kwargs):
-    print "Saving reference..."
+    """
+    Saves a reference to the original object Facade is passed. This will either
+    be the object itself or a LazyBones instance for lazy-loading later
+
+    :param mixed o: The original object
+    :param class cls: The class definition for the original object
+    :param tuple args: The positional arguments to the original object
+    :param dict kwargs: The keyword arguments to the original object
+    
+    """
     if not o and cls:
-        print "Saving a reference ot the class: ", cls
         self['__original_object'] = LazyBones( cls, args, kwargs )
     else:
-        print "Saving a reference ot the actual instance", o
         while hasattr( o, '__class__' ) and o.__class__ == Wrapper:
             o = o.wrapper__unwrap()
         self['__original_object'] = o
 
-  def __handle_any(self, o, method_name, member):
+  def __store_any(self, o, method_name, member):
+    """
+    Determines type of member and stores it accordingly
+
+    :param mixed o: Any parent object
+    :param str method_name: The name of the method or attribuet
+    :param mixed member: Any child object
+    
+    """
     if should_exclude( eval( "o." + method_name ), self.__exclusion_list ):
         self.__store__[ method_name ] = eval( "o." + method_name )
         return
 
     if hasattr( member, '__call__' ):
-        self.__handle_callable( o, method_name, member )
+        self.__store_callable( o, method_name, member )
     elif inspect.isclass( member ):
-        self.__handle_class( o, method_name, member ) # Default ot lazy-loading classes here.
+        self.__store_class( o, method_name, member ) # Default ot lazy-loading classes here.
     elif not is_primitive( member ):
-        self.__handle_nonprimitive( o, method_name, member )
+        self.__store_nonprimitive( o, method_name, member )
     else:
-        self.__handle_other( o, method_name, member )
+        self.__store_other( o, method_name, member )
 
   def __init__( self, o=None, exclusion_list=[], cls=None, args=tuple(), kwargs={} ):
     """
@@ -237,7 +305,7 @@ class Wrapper( dict ):
     self.__save_reference(o, cls, args, kwargs)
 
     for method_name, member in inspect.getmembers(o):
-        self.__handle_any(o, method_name, member)
+        self.__store_any(o, method_name, member)
 
     try: # try-except because o is mixed type
         if o.wrapper__get_store: # For wrapping facades in a chain.
