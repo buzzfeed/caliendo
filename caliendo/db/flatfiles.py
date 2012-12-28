@@ -51,6 +51,10 @@ def select_io( hash ):
     if not hash:
         return []
     file_list = os.listdir(CACHE_DIRECTORY)
+    labeled = [ ( filename.split( '_' )[1], filename ) for filename in file_list ]
+    ordered = [ filename[1] for filename in sorted( labeled, cmp=lambda x, y: cmp( int(x), int(y) ), key=lambda x: x[0] ) ]
+    packets = [ os.path.join( CACHE_DIRECTORY, filename ) for filename in ordered ]
+    
     fi = lambda filename: True if hash in filename else False
     packets = [ os.path.join( CACHE_DIRECTORY, filename ) for filename in sorted( filter( fi, file_list ) ) ]
     res = [ ]
@@ -118,7 +122,9 @@ def delete_io( hash ):
     """
     file_list = os.listdir(CACHE_DIRECTORY)
     f = lambda filename: True if hash in filename else False
-    packets = [ os.path.join( CACHE_DIRECTORY, filename ) for filename in sorted( filter( f, file_list ) ) ]
+    labeled = [ ( filename.split( '_' )[1], filename ) for filename in filter( f, file_list ) ]
+    ordered = [ filename[1] for filename in sorted( labeled, cmp=lambda x, y: cmp( int(x), int(y) ), key=lambda x: x[0] ) ]
+    packets = [ os.path.join( CACHE_DIRECTORY, filename ) for filename in ordered ]
     res = 0
     for packet in packets:
         try:

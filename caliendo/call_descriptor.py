@@ -114,7 +114,7 @@ class CallDescriptor:
       }
 
   def __enumerate_packets(self):
-    max_packet_size  = 1024 # 1MB, prolly more like 8MB for 4b char size. MySQL default limit is 16
+    max_packet_size  = 4096 # 1MB, prolly more like 8MB for 4b char size. MySQL default limit is 16
     buffer           = Buf( self.methodname, self.args, self.returnval, self.stack )
     packet_num       = 0
     packets          = [ ]
