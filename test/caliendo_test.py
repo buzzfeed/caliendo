@@ -35,14 +35,12 @@ class CallOnceEver:
 class CallsServiceInInit:
     __die = 0
     def __init__(self):
-        print "Init called."
         if self.__die:
             raise Exception("NOPE!")
         else:
             self.__die = 1
 
     def methoda(self):
-        print "Method a called."
         return 'a'
 
     def nested_init(self):
