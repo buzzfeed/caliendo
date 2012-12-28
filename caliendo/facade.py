@@ -39,7 +39,7 @@ def should_exclude(type_or_instance, exclusion_list):
     return False
 
 
-class Wrapper( object ):
+class Wrapper( dict ):
   """
   The Caliendo facade. Extends the Python object. Pass the initializer an object
   and the Facade will wrap all the public methods. Built-in methods
@@ -49,7 +49,6 @@ class Wrapper( object ):
   called. 
   """
   last_cached = None
-  __original_object = None
   __exclusion_list = [ ]
 
   def wrapper__ignore(self, type):
@@ -88,13 +87,36 @@ class Wrapper( object ):
 
     :rtype mixed:
     """
-    return self.__original_object
+    print "Returning original object..."
+    return self['__original_object']
 
   def __get_hash(self, args, trace_string, kwargs ):
       return (str(frozenset(util.serialize_args(args))) + "\n" +
                               str( counter.counter.get_from_trace( trace_string ) ) + "\n" +
                               str(frozenset(util.serialize_args(kwargs))) + "\n" +
                               trace_string + "\n" )
+
+
+  def append_and_return( self, method_name, *args, **kwargs ):
+    trace_string      = method_name + " "
+    for f in inspect.stack():
+      trace_string = trace_string + f[1] + " " + f[3] + " "
+
+    to_hash                = self.__get_hash(args, trace_string, kwargs)
+    call_hash              = sha1( to_hash ).hexdigest()
+    cd                     = call_descriptor.fetch( call_hash )
+    if not cd:
+      returnval = (self.__store__['methods'][method_name])(*args, **kwargs)
+      cd = call_descriptor.CallDescriptor( hash      = call_hash,
+                                           stack     = trace_string,
+                                           method    = method_name,
+                                           returnval = returnval,
+                                           args      = args,
+                                           kwargs    = kwargs )
+      cd.save()
+      self.last_cached = call_hash
+
+    return cd.returnval
 
   def __wrap( self, method_name ):
     """
@@ -106,103 +128,88 @@ class Wrapper( object ):
 
     :rtype: lambda function.
     """
-    def append_and_return( self, *args, **kwargs ):
-      trace_string      = method_name + " "
-      for f in inspect.stack():
-        trace_string = trace_string + f[1] + " " + f[3] + " "
-
-      to_hash                = self.__get_hash(args, trace_string, kwargs)
-      call_hash              = sha1( to_hash ).hexdigest()
-      cd                     = call_descriptor.fetch( call_hash )
-      if not cd:
-        returnval = (self.__store__['methods'][method_name])(*args, **kwargs)
-        cd = call_descriptor.CallDescriptor( hash      = call_hash,
-                                             stack     = trace_string,
-                                             method    = method_name,
-                                             returnval = returnval,
-                                             args      = args,
-                                             kwargs    = kwargs )
-        cd.save()
-        self.last_cached = call_hash
-      return cd.returnval
-
-    return lambda *args, **kwargs: Facade( append_and_return( self, *args, **kwargs ), list(self.__exclusion_list) )
+    return lambda *args, **kwargs: Facade( self.append_and_return( method_name, *args, **kwargs ), list(self.__exclusion_list) )
 
   def __getattr__( self, key ):
-    if key not in self.__store__:
-        raise Exception( "Key, " + str( key ) + " has not been set in the facade! Method is undefined." )
-    val = self.__store__[key]
+    if key not in self.__store__: # Attempt to lazy load the method (assuming __getattr__ is set on the incoming object)
+        try:
+            val = eval( "self['__original_object']." + key )
+            if hasattr( val, '__call__' ):
+                self.__store__[key] = lambda: Facade(val())
+            else:
+                self.__store__[key] = Facade(val)
+        except: 
+            raise Exception( "Key, " + str( key ) + " has not been set in the facade and failed to lazy load! Method is undefined." )
+    else:
+        val = self.__store__[key]
+
     if val and type(val) == tuple and val[0] == 'attr':
         return Facade(val[1])
+    
     return self.__store__[ key ]
 
   def wrapper__get_store(self):
       return self.__store__
 
-  def get_members(self, o):
-      try:
-          members = inspect.getmembers(o)
-      except KeyError:
-          try:
-              class_members = inspect.getmembers(o.__class__)
-              for name, member in class_members:
-                  members = [ ( name, getattr( o, name ) ) ]
-          except Exception, e:
-              return []
-      return members
+  def __handle_method_function_or_class(self, o, method_name, member):
+    self.__store__['methods'][method_name] = eval( "o." + method_name )
+    self.__store__['methods'][method_name[0].lower() + method_name[1:]] = eval( "o." + method_name )
+    ret_val = self.__wrap( method_name )
+    self.__store__[ method_name ] = ret_val
+    self.__store__[ method_name[0].lower() + method_name[1:] ] = ret_val
 
-  def __init__( self, o, exclusion_list=[] ):
+  def __handle_nonprimitive(self, o, method_name, member):
+    self.__store__[ method_name ] = ( 'attr', member )
+    self.__store__[ method_name[0].lower() + method_name[1:] ] = ( 'attr', member )
+
+  def __handle_other(self, o, method_name, member):
+    self.__store__[ method_name ] = eval( "o." + method_name )
+    self.__store__[ method_name[0].lower() + method_name[1:] ] = eval( "o." + method_name )
+
+  def __save_reference(self, o):
+    while hasattr( o, '__class__' ) and o.__class__ == Wrapper:
+        o = o.wrapper__unwrap()
+    self['__original_object'] = o
+
+  def __init__( self, o=None, exclusion_list=[], cls=None, args=tuple(), kwargs={} ):
     """
     The init method for the Wrapper class.
 
     :param mixed o: Some object to wrap.
     :param list exclusion_list: The list of types NOT to wrap
+    :param class cls: The class definition for the object being mocked
+    :param tuple args: The arguments for the class definition to return the desired instance
+    :param dict kwargs: The keywork arguments for the class definition to return the desired instance
 
     """
-    self.__store__ = dict()
-    store = self.__store__
-    store[ 'methods' ] = {}
-    self.__original_object = o
-    self.__exclusion_list = exclusion_list
+    self.__store__            = {'methods': {}}
+    self.__class              = cls
+    self.__args               = args
+    self.__kwargs             = kwargs
+    self.__exclusion_list     = exclusion_list
 
-    members = self.get_members(o)
+    self.__save_reference(o)
 
-    if not members: 
-        self.wrapper__inspected = False
-        return
-    else:
-        self.wrapper__inspected = True
-
-    for method_name, member in members:
-        if USE_CALIENDO:
-            if should_exclude( eval( "o." + method_name ), self.__exclusion_list ):
-                self.__store__[ method_name ] = eval( "o." + method_name )
-                continue
-            if inspect.ismethod(member) or inspect.isfunction(member) or inspect.isclass(member):
-                self.__store__['methods'][method_name] = eval( "o." + method_name )
-                self.__store__['methods'][method_name[0].lower() + method_name[1:]] = eval( "o." + method_name )
-                ret_val = self.__wrap( method_name )
-                self.__store__[ method_name ] = ret_val
-                self.__store__[ method_name[0].lower() + method_name[1:] ] = ret_val
-            elif not is_primitive(member):
-                self.__store__[ method_name ] = ( 'attr', member )
-                self.__store__[ method_name[0].lower() + method_name[1:] ] = ( 'attr', member )
-            else:
-                self.__store__[ method_name ] = eval( "o." + method_name )
-                self.__store__[ method_name[0].lower() + method_name[1:] ] = eval( "o." + method_name )
-
-        else:
+    for method_name, member in inspect.getmembers(o):
+        if should_exclude( eval( "o." + method_name ), self.__exclusion_list ):
             self.__store__[ method_name ] = eval( "o." + method_name )
-            self.__store__[ method_name[0].lower() + method_name[1:] ] = eval( "o." + method_name )
+            continue
+            
+        if inspect.ismethod(member) or inspect.isfunction(member) or inspect.isclass(member):
+            self.__handle_method_function_or_class( o, method_name, member )
+        elif not is_primitive(member):
+            self.__handle_nonprimitive(o, method_name, member)
+        else:
+            self.__handle_other(o, method_name, member)
 
-
-    try: # Fail gracefully for non-iterables
+    try: 
         if o.wrapper__get_store: # For wrapping facades in a chain.
             store = o.wrapper__get_store()
             for key, val in store.items():
                 self.__store__[key] = val # TODO: Ensure we don't need to update/ namespace store['methods']
     except:
         pass
+
 
 def Facade( some_instance, exclusion_list=[] ):
     """
@@ -223,7 +230,5 @@ def Facade( some_instance, exclusion_list=[] ):
     else:
         if is_primitive(some_instance):
             return some_instance
-        wrapper = Wrapper(some_instance, list(exclusion_list))
-        if wrapper.wrapper__inspected:
-            return wrapper
-        return some_instance
+        return Wrapper(some_instance, list(exclusion_list))
+ 

@@ -60,7 +60,17 @@ class TestC:
         self.__private_var = self.__private_var + 1
         return self.__private_var
 
-    
+class LazyBones(dict):
+    def __init__(self):
+        self.store = {}
+
+    def __getattr__(self, attr):
+        if attr == 'c':
+            return lambda : TestC()
+        else:
+            self.store[attr] = None
+            return self.store[attr]
+
 class  CaliendoTestCase(unittest.TestCase):
 
     def test_call_descriptor(self):
@@ -345,6 +355,17 @@ class  CaliendoTestCase(unittest.TestCase):
         c.wrapper__ignore( TestA )
         a = c.test_a_class()
         self.assertTrue( isinstance( a, TestA ) )
+
+    def test_lazy_load(self):
+        # Write class where a method is defined using __getattr__
+        lazy = Facade(LazyBones())
+        c = lazy.c()
+        self.assertEquals( c.__class__, Wrapper )
+        self.assertEquals( c.wrapper__unwrap().__class__, TestC )
+
+    def test_service_call_in__init__(self):
+        # Make a service call in the init method of a class and ensure it's not called after caching.
+        pass
         
 
 if __name__ == '__main__':
