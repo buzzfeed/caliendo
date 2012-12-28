@@ -362,6 +362,7 @@ class  CaliendoTestCase(unittest.TestCase):
         c = lazy.c()
         self.assertEquals( c.__class__, Wrapper )
         self.assertEquals( c.wrapper__unwrap().__class__, TestC )
+        self.assertEquals( c.methoda(), 'a' )
 
     def test_service_call_in__init__(self):
         # Make a service call in the init method of a class and ensure it's not called after caching.
