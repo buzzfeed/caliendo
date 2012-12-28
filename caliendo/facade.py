@@ -106,7 +106,7 @@ class Wrapper( dict ):
                               trace_string + "\n" )
 
 
-  def __append_and_return( self, method_name, *args, **kwargs ):
+  def __cache( self, method_name, *args, **kwargs ):
     trace_string      = method_name + " "
     for f in inspect.stack():
       trace_string = trace_string + f[1] + " " + f[3] + " "
@@ -115,7 +115,10 @@ class Wrapper( dict ):
     call_hash              = sha1( to_hash ).hexdigest()
     cd                     = call_descriptor.fetch( call_hash )
     if not cd:
-      returnval = (self.__store__['callables'][method_name])(*args, **kwargs)
+      callable  = self.__store__['callables'][method_name]
+      if hasattr( callable, '__class__' ) and callable.__class__ == LazyBones:
+          callable = callable.init()
+      returnval = callable(*args, **kwargs)
       cd = call_descriptor.CallDescriptor( hash      = call_hash,
                                            stack     = trace_string,
                                            method    = method_name,
@@ -124,8 +127,13 @@ class Wrapper( dict ):
                                            kwargs    = kwargs )
       cd.save()
       self.last_cached = call_hash
+    else:
+      returnval = cd.returnval
 
-    return cd.returnval
+    if inspect.isclass(returnval):
+      returnval = LazyBones( callable, args, kwargs )
+
+    return returnval
 
   def __wrap( self, method_name ):
     """
@@ -135,15 +143,24 @@ class Wrapper( dict ):
     :param str method_name: The name of the method precisely as it's called on
     the object to wrap.
 
-    :rtype: lambda function.
+    :rtype lambda function:
     """
-    return lambda *args, **kwargs: Facade( self.__append_and_return( method_name, *args, **kwargs ), list(self.__exclusion_list) )
+    return lambda *args, **kwargs: Facade( self.__cache( method_name, *args, **kwargs ), list(self.__exclusion_list) )
 
   def __getattr__( self, key ):
     if key not in self.__store__: # Attempt to lazy load the method (assuming __getattr__ is set on the incoming object)
         try:
-            val = eval( "self['__original_object']." + key )
-            self.__handle_any(self['__original_object'], key, val)
+            print "Getting original object..."
+            oo = self['__original_object']
+            print "Checking for class attribuet..."
+            print oo
+            if hasattr( oo, '__class__' ) and oo.__class__ == LazyBones:
+                print "Initializing lazy bones..."
+                oo = oo.init()
+            print "Evaluating oo at ", key
+            val = eval( "oo." + key )
+            print "Handing off to __handle any__"
+            self.__handle_any(oo, key, val)
         except: 
             raise Exception( "Key, " + str( key ) + " has not been set in the facade and failed to lazy load! Method is undefined." )
 
@@ -176,9 +193,12 @@ class Wrapper( dict ):
     self.__store__[ method_name[0].lower() + method_name[1:] ] = eval( "o." + method_name )
 
   def __save_reference(self, o, cls, args, kwargs):
+    print "Saving reference..."
     if not o and cls:
+        print "Saving a reference ot the class: ", cls
         self['__original_object'] = LazyBones( cls, args, kwargs )
     else:
+        print "Saving a reference ot the actual instance", o
         while hasattr( o, '__class__' ) and o.__class__ == Wrapper:
             o = o.wrapper__unwrap()
         self['__original_object'] = o
@@ -251,4 +271,4 @@ def Facade( some_instance=None, exclusion_list=[], cls=None, args=tuple(), kwarg
     else:
         if is_primitive(some_instance):
             return some_instance
-        return Wrapper(some_instance, list(exclusion_list))
+        return Wrapper(o=some_instance, exclusion_list=list(exclusion_list), cls=cls, args=args, kwargs=kwargs )
