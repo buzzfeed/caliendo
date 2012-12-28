@@ -45,6 +45,10 @@ class CallsServiceInInit:
         print "Method a called."
         return 'a'
 
+    def nested_init(self):
+        return CallsServiceInInit()
+
+
 class TestA:
     def getb(self):
         return TestB()
@@ -383,6 +387,41 @@ class  CaliendoTestCase(unittest.TestCase):
         def test(fh):
             o = Facade( cls=CallsServiceInInit )
             result = o.methoda()
+            fh.write(str(result == 'a'))
+            fh.close()
+            os._exit(0)
+
+        outputs = [ tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False) ]
+
+        for output in outputs:
+            pid = os.fork()
+            if pid:
+                os.waitpid(pid, 0)
+            else:
+                test(output)
+
+        expected = ['True', 'True', 'True']
+        result   = []
+
+        for output in outputs:
+            output.close()
+
+            fh = open(output.name)
+            result.append(fh.read())
+            fh.close()
+
+            os.remove(output.name)
+
+        self.assertEqual(result, expected)
+
+    def test_service_call_in_nested__init__(self):
+        test = self
+
+        def test(fh):
+            o = Facade( cls=CallsServiceInInit )
+            result = o.nested_init().methoda()
             fh.write(str(result == 'a'))
             fh.close()
             os._exit(0)
