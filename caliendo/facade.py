@@ -1,7 +1,6 @@
 from hashlib import sha1
 import datetime
 import inspect
-
 from caliendo import util
 from caliendo import config
 from caliendo import call_descriptor
@@ -23,7 +22,7 @@ def is_primitive(var):
     Checks if an object is in ( float, long, str, int, dict, list, unicode, tuple, set, frozenset, datetime.datetime, datetime.timedelta )
     
     """
-    primitives = ( float, long, str, int, dict, list, unicode, tuple, set, frozenset, datetime.datetime, datetime.timedelta )
+    primitives = ( float, long, str, int, dict, list, unicode, tuple, set, frozenset, datetime.datetime, datetime.timedelta, type(None) )
     for primitive in primitives:
         if type( var ) == primitive:
             return True
@@ -219,7 +218,11 @@ class Wrapper( dict ):
     :param str method_name: The name of the method
     :param class member: The actual class definition
     """
-    self.__store_callable( o, method_name, member )
+    self.__store__['callables'][method_name] = eval( "o." + method_name )
+    self.__store__['callables'][method_name[0].lower() + method_name[1:]] = eval( "o." + method_name )
+    ret_val = self.__wrap( method_name )
+    self.__store__[ method_name ] = ret_val
+    self.__store__[ method_name[0].lower() + method_name[1:] ] = ret_val
     
   def __store_nonprimitive(self, o, method_name, member):
     """
@@ -329,6 +332,8 @@ def Facade( some_instance=None, exclusion_list=[], cls=None, args=tuple(), kwarg
 
     :rtype instance: Either the instance passed or an instance of the Wrapper wrapping the instance passed.
     """
+    print "USE_CALIENDO: ", USE_CALIENDO
+    print "SHOULD EXCLUDE: ", should_exclude( some_instance, exclusion_list )
     if not USE_CALIENDO or should_exclude( some_instance, exclusion_list ):
         if not is_primitive(some_instance):
           # Provide dummy methods to prevent errors in implementations dependent
@@ -337,6 +342,6 @@ def Facade( some_instance=None, exclusion_list=[], cls=None, args=tuple(), kwarg
           some_instance.wrapper__delete_last_cached = lambda : None
         return some_instance # Just give it back.
     else:
-        if is_primitive(some_instance):
+        if is_primitive(some_instance) and not cls:
             return some_instance
         return Wrapper(o=some_instance, exclusion_list=list(exclusion_list), cls=cls, args=args, kwargs=kwargs )

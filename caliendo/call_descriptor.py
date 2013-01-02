@@ -1,7 +1,9 @@
-import sys
 import cPickle as pickle
+import copy_reg
+import types
 
 from caliendo import config
+from caliendo import pickling
 
 USE_CALIENDO = config.should_use_caliendo( )
 CONFIG       = config.get_database_config( )
@@ -13,6 +15,11 @@ if USE_CALIENDO:
         from caliendo.db.flatfiles import insert_io, select_io, delete_io
     else:
         from caliendo.db.sqlite import insert_io, select_io, delete_io
+
+def reduce_method(m):
+    return (getattr, (m.__self__, m.__func__.__name__))
+
+copy_reg.pickle(types.MethodType, reduce_method)
 
 def fetch( hash ):
     """
@@ -44,11 +51,9 @@ def fetch( hash ):
 class Buf:
   def __init__(self, methodname, args, returnval, stack):
 
-    args                   = pickle.dumps( args )
-    try:
-      returnval              = pickle.dumps( returnval )
-    except Exception, e:
-      print "Failed to pickle returnval: " + str( returnval ) + " " + str( e )
+    args                   = pickling.pickle_with_weak_refs(args)#pickle.dumps( args )
+    returnval              = pickling.pickle_with_weak_refs(returnval)#pickle.dumps( returnval )
+    
     self.__data            = "".join([ methodname, args, returnval, stack ])
     self.__methodname_len  = len( methodname )
     self.__args_len        = len( args )
@@ -79,6 +84,7 @@ class Buf:
       return 'returnval'
     else:
       return 'stack'
+
 
 class CallDescriptor:
   """

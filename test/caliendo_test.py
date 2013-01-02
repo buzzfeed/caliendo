@@ -449,6 +449,45 @@ class  CaliendoTestCase(unittest.TestCase):
 
         self.assertEqual(result, expected)
 
+    def test_dfp_bullshit(self):
+        from adspygoogle import DfpClient
+
+        client = Facade(cls=DfpClient, kwargs={'headers': {
+                'email': 'andrew.kelleher@buzzfeed.com',
+                'password': 'JoeHill1915',
+                'applicationName': '(DfpApi-Python/9.4.0, Common-Python/3.0.8, Python/2.7)|GoogleTest',
+                'networkCode': str(6556)
+            }, 'config': {
+                'debug': False,
+                'xml_log': 'n',
+                'request_log': 'n',
+                'pretty_xml': 'y',
+                'compress': 'n'
+            } } )
+
+        user_service = client.GetService( 'UserService', 'https://www.google.com' )#.GetCurrentUser()[0]
+        print "USER SERVICE:"
+        print user_service
+        """
+        #current_user = user_service.GetCurrentUser()[0]
+        import pickle
+        import weakref
+
+        class A:
+            pass
+
+        a = A()
+        b = A()
+        c = A()
+
+        a.b = b
+        a.ref_b = weakref.ref(b)
+        a.ref_c = weakref.ref(c)
+
+        data = pickle.dumps(a)
+        a = pickle.loads(data)
+        """
+
 if __name__ == '__main__':
     unittest.main()
 
