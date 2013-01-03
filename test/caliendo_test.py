@@ -1,7 +1,9 @@
 import inspect
 import tempfile
+import weakref
 import unittest
 import hashlib
+import pickle
 import sys
 import os
 
@@ -498,6 +500,45 @@ class  CaliendoTestCase(unittest.TestCase):
             os.remove(output.name)
 
         self.assertEqual(result, expected)
+
+    def test_truncation(self):
+        from caliendo import pickling
+        pickling.MAX_DEPTH = 2
+        cls = TestA()
+        a = {
+          'a': {
+            'b': {
+              'c': [{
+                'd': {
+                  'e': {
+                    'f': {
+                      'a': weakref.ref(cls),
+                      'b': 2,
+                      'c': 3
+                    }
+                  }
+                }
+              },{
+                'd': {
+                  'e': {
+                    'f': {
+                      'a': 1,
+                      'b': 2,
+                      'c': 3
+                    }
+                  }
+                }
+              }]
+            }
+          },
+          'b': {
+            'a': 1,
+            'b': 2
+          }
+        }
+        b = pickle.loads(pickling.pickle_with_weak_refs(a))
+        self.assertEquals( b, {'a': {'b': {'c': [{}, {}]}}, 'b': {'a': 1, 'b': 2}} )
+
 if __name__ == '__main__':
     unittest.main()
 

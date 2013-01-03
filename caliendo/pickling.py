@@ -35,10 +35,8 @@ def objwalk(obj, path=(), memo=None):
 
     :rtype <tuple<tuple>, <mixed>>: The path to the value on the object, the value.
     """
-    global MAX_DEPTH
     if len( path ) > MAX_DEPTH + 1:
         yield path, obj # Truncate it!
-        raise StopIteration()
     if memo is None:
         memo = set()
     iterator = None
