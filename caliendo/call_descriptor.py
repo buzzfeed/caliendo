@@ -16,11 +16,6 @@ if USE_CALIENDO:
     else:
         from caliendo.db.sqlite import insert_io, select_io, delete_io
 
-def reduce_method(m):
-    return (getattr, (m.__self__, m.__func__.__name__))
-
-copy_reg.pickle(types.MethodType, reduce_method)
-
 def fetch( hash ):
     """
     Fetches CallDescriptor from the local database given a hash key representing the call. If it doesn't exist returns None.

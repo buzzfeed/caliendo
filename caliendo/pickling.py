@@ -2,15 +2,22 @@ from collections import Mapping, Sequence, Set
 import weakref
 import pickle
 import inspect
+import types
+import copy_reg
 import datetime
 import sys
 
-MAX_DEPTH = 5
+MAX_DEPTH = 10
 
 string_types = (str, unicode) if str is bytes else (str, bytes)
 iteritems = lambda mapping: getattr(mapping, 'iteritems', mapping.items)()
 class_iterator = lambda mapping: iteritems(vars(mapping)) if hasattr( mapping, '__dict__' ) else iteritems(vars(mapping()))
 primitives = ( float, long, str, int, dict, list, unicode, tuple, set, frozenset, datetime.datetime, datetime.timedelta, type(None) )
+
+def reduce_method(m):
+    return (getattr, (m.__self__, m.__func__.__name__))
+
+copy_reg.pickle(types.MethodType, reduce_method)
 
 class C:
     pass
@@ -91,6 +98,8 @@ def truncate_attr_at_path( obj, path ):
     """
     target = obj
     last_attr = path[-1]
+    if type(last_attr) == tuple:
+        last_attr = last_attr[-1]
     for attr in path[0:-1]:
         try:
             if type(attr) in ( str, unicode ) and target and hasattr( target, attr ) and hasattr( target, '__getitem__' ):
@@ -152,14 +161,18 @@ def pickle_with_weak_refs( o ):
 
     :rtype str: The pickled object
     """
-    print "PICKLING:", o
-    #try:
-    #    return pickle.dumps(o)
-    #except:
-    walk = dict([ (path,val) for path, val in objwalk(o)])
-    for path, val in walk.items():
-        if len(path) > MAX_DEPTH or is_lambda(val):
-            truncate_attr_at_path(o, path)
-        if type(val) == weakref.ref:
-            setattr_at_path( o, path, val() ) # Resolve weak references
-    return pickle.dumps(o)
+    sys.stderr.write( "Pickling with weak refs\n" )
+    try:
+        sys.stderr.write( "Attempting to pickle...\n" )
+        return pickle.dumps(o)
+    except:
+        sys.stderr.write( "Pickling with weak refs...\n" )
+        walk = dict([ (path,val) for path, val in objwalk(o)])
+        sys.stderr.write( "\n".join( [ str( ( path, val ) ) for path, val in walk ] ) )
+        for path, val in walk.items():
+            if len(path) > MAX_DEPTH or is_lambda(val):
+                truncate_attr_at_path(o, path)
+            if type(val) == weakref.ref:
+                print "RESOLVING WEAK REF:", val
+                setattr_at_path( o, path, val() ) # Resolve weak references
+        return pickle.dumps(o)

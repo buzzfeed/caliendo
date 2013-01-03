@@ -449,32 +449,13 @@ class  CaliendoTestCase(unittest.TestCase):
 
         self.assertEqual(result, expected)
 
-    def test_dfp_bullshit(self):
-        from adspygoogle import DfpClient
-
-        client = Facade(cls=DfpClient, kwargs={'headers': {
-                'email': 'andrew.kelleher@buzzfeed.com',
-                'password': 'JoeHill1915',
-                'applicationName': '(DfpApi-Python/9.4.0, Common-Python/3.0.8, Python/2.7)|GoogleTest',
-                'networkCode': str(6556)
-            }, 'config': {
-                'debug': False,
-                'xml_log': 'n',
-                'request_log': 'n',
-                'pretty_xml': 'y',
-                'compress': 'n'
-            } } )
-
-        user_service = client.GetService( 'UserService', 'https://www.google.com' )#.GetCurrentUser()[0]
-        print "USER SERVICE:"
-        print user_service
-        """
-        #current_user = user_service.GetCurrentUser()[0]
+    def test_mock_weak_ref(self):
         import pickle
         import weakref
 
         class A:
-            pass
+            def methoda(self):
+                return 'a'
 
         a = A()
         b = A()
@@ -484,10 +465,39 @@ class  CaliendoTestCase(unittest.TestCase):
         a.ref_b = weakref.ref(b)
         a.ref_c = weakref.ref(c)
 
-        data = pickle.dumps(a)
-        a = pickle.loads(data)
-        """
+        test = self
 
+        def test(fh):
+            o = Facade( a )
+            result = o.methoda()
+            fh.write(str(result == 'a'))
+            fh.close()
+            os._exit(0)
+
+        outputs = [ tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False) ]
+
+        for output in outputs:
+            pid = os.fork()
+            if pid:
+                os.waitpid(pid, 0)
+            else:
+                test(output)
+
+        expected = ['True', 'True', 'True']
+        result   = []
+
+        for output in outputs:
+            output.close()
+
+            fh = open(output.name)
+            result.append(fh.read())
+            fh.close()
+
+            os.remove(output.name)
+
+        self.assertEqual(result, expected)
 if __name__ == '__main__':
     unittest.main()
 
