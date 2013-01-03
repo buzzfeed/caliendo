@@ -1,7 +1,9 @@
 import inspect
 import tempfile
+import weakref
 import unittest
 import hashlib
+import pickle
 import sys
 import os
 
@@ -32,6 +34,21 @@ class CallOnceEver:
             self.__die = 1
             return 1
 
+class CallsServiceInInit:
+    __die = 0
+    def __init__(self):
+        if self.__die:
+            raise Exception("NOPE!")
+        else:
+            self.__die = 1
+
+    def methoda(self):
+        return 'a'
+
+    def nested_init(self):
+        return CallsServiceInInit()
+
+
 class TestA:
     def getb(self):
         return TestB()
@@ -60,7 +77,17 @@ class TestC:
         self.__private_var = self.__private_var + 1
         return self.__private_var
 
-    
+class LazyBones(dict):
+    def __init__(self):
+        self.store = {}
+
+    def __getattr__(self, attr):
+        if attr == 'c':
+            return lambda : TestC()
+        else:
+            self.store[attr] = None
+            return self.store[attr]
+
 class  CaliendoTestCase(unittest.TestCase):
 
     def test_call_descriptor(self):
@@ -345,7 +372,172 @@ class  CaliendoTestCase(unittest.TestCase):
         c.wrapper__ignore( TestA )
         a = c.test_a_class()
         self.assertTrue( isinstance( a, TestA ) )
-        
+
+    def test_lazy_load(self):
+        # Write class where a method is defined using __getattr__
+        lazy = Facade(LazyBones())
+        c = lazy.c()
+        self.assertEquals( c.__class__, Wrapper )
+        self.assertEquals( c.wrapper__unwrap().__class__, TestC )
+        self.assertEquals( c.methoda(), 'a' )
+
+    def test_service_call_in__init__(self):
+        test = self
+
+        def test(fh):
+            o = Facade( cls=CallsServiceInInit )
+            result = o.methoda()
+            fh.write(str(result == 'a'))
+            fh.close()
+            os._exit(0)
+
+        outputs = [ tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False) ]
+
+        for output in outputs:
+            pid = os.fork()
+            if pid:
+                os.waitpid(pid, 0)
+            else:
+                test(output)
+
+        expected = ['True', 'True', 'True']
+        result   = []
+
+        for output in outputs:
+            output.close()
+
+            fh = open(output.name)
+            result.append(fh.read())
+            fh.close()
+
+            os.remove(output.name)
+
+        self.assertEqual(result, expected)
+
+    def test_service_call_in_nested__init__(self):
+        test = self
+
+        def test(fh):
+            o = Facade( cls=CallsServiceInInit )
+            result = o.nested_init().methoda()
+            fh.write(str(result == 'a'))
+            fh.close()
+            os._exit(0)
+
+        outputs = [ tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False) ]
+
+        for output in outputs:
+            pid = os.fork()
+            if pid:
+                os.waitpid(pid, 0)
+            else:
+                test(output)
+
+        expected = ['True', 'True', 'True']
+        result   = []
+
+        for output in outputs:
+            output.close()
+
+            fh = open(output.name)
+            result.append(fh.read())
+            fh.close()
+
+            os.remove(output.name)
+
+        self.assertEqual(result, expected)
+
+    def test_mock_weak_ref(self):
+        import pickle
+        import weakref
+
+        class A:
+            def methoda(self):
+                return 'a'
+
+        a = A()
+        b = A()
+        c = A()
+
+        a.b = b
+        a.ref_b = weakref.ref(b)
+        a.ref_c = weakref.ref(c)
+
+        test = self
+
+        def test(fh):
+            o = Facade( a )
+            result = o.methoda()
+            fh.write(str(result == 'a'))
+            fh.close()
+            os._exit(0)
+
+        outputs = [ tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False) ]
+
+        for output in outputs:
+            pid = os.fork()
+            if pid:
+                os.waitpid(pid, 0)
+            else:
+                test(output)
+
+        expected = ['True', 'True', 'True']
+        result   = []
+
+        for output in outputs:
+            output.close()
+
+            fh = open(output.name)
+            result.append(fh.read())
+            fh.close()
+
+            os.remove(output.name)
+
+        self.assertEqual(result, expected)
+
+    def test_truncation(self):
+        from caliendo import pickling
+        pickling.MAX_DEPTH = 2
+        cls = TestA()
+        a = {
+          'a': {
+            'b': {
+              'c': [{
+                'd': {
+                  'e': {
+                    'f': {
+                      'a': weakref.ref(cls),
+                      'b': 2,
+                      'c': 3
+                    }
+                  }
+                }
+              },{
+                'd': {
+                  'e': {
+                    'f': {
+                      'a': 1,
+                      'b': 2,
+                      'c': 3
+                    }
+                  }
+                }
+              }]
+            }
+          },
+          'b': {
+            'a': 1,
+            'b': 2
+          }
+        }
+        b = pickle.loads(pickling.pickle_with_weak_refs(a))
+        self.assertEquals( b, {'a': {'b': {'c': [{}, {}]}}, 'b': {'a': 1, 'b': 2}} )
 
 if __name__ == '__main__':
     unittest.main()

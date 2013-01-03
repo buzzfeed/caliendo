@@ -1,6 +1,6 @@
 from hashlib import sha1
+import datetime
 import inspect
-
 from caliendo import util
 from caliendo import config
 from caliendo import call_descriptor
@@ -18,13 +18,21 @@ if USE_CALIENDO:
         from caliendo.db.sqlite import delete_io
 
 def is_primitive(var):
-    primitives = ( float, long, str, int, dict, list, unicode, tuple, set, frozenset )
+    """
+    Checks if an object is in ( float, long, str, int, dict, list, unicode, tuple, set, frozenset, datetime.datetime, datetime.timedelta )
+    
+    """
+    primitives = ( float, long, str, int, dict, list, unicode, tuple, set, frozenset, datetime.datetime, datetime.timedelta, type(None) )
     for primitive in primitives:
         if type( var ) == primitive:
             return True
     return False
 
 def should_exclude(type_or_instance, exclusion_list):
+    """
+    Tests whether an object should be simply returned when being wrapped
+    
+    """
     if type_or_instance in exclusion_list: # Check class definition
         return True
     if type(type_or_instance) in exclusion_list: # Check instance type
@@ -37,8 +45,20 @@ def should_exclude(type_or_instance, exclusion_list):
 
     return False
 
+class LazyBones:
+    """
+    A simple wrapper for lazy-loading arbitrary classes
+    
+    """
+    def __init__(self, cls, args, kwargs):
+        self.__class  = cls
+        self.__args   = args
+        self.__kwargs = kwargs
+    def init(self):
+        self.instance = self.__class( *self.__args, **self.__kwargs )
+        return self.instance
 
-class Wrapper( object ):
+class Wrapper( dict ):
   """
   The Caliendo facade. Extends the Python object. Pass the initializer an object
   and the Facade will wrap all the public methods. Built-in methods
@@ -48,7 +68,6 @@ class Wrapper( object ):
   called. 
   """
   last_cached = None
-  __original_object = None
   __exclusion_list = [ ]
 
   def wrapper__ignore(self, type):
@@ -87,13 +106,57 @@ class Wrapper( object ):
 
     :rtype mixed:
     """
-    return self.__original_object
+    return self['__original_object']
 
   def __get_hash(self, args, trace_string, kwargs ):
+      """
+      Returns the hash from a trace string, args, and kwargs
+
+      :param tuple args: The positional arguments to the function call
+      :param str trace_string: The serialized stack trace for the function call
+      :param dict kwargs: The keyword arguments to the function call
+
+      :rtype str: The sha1 hashed result of the inputs plus a thuper-sthecial counter incremented in the local context of the call
+      
+      """
       return (str(frozenset(util.serialize_args(args))) + "\n" +
                               str( counter.counter.get_from_trace( trace_string ) ) + "\n" +
                               str(frozenset(util.serialize_args(kwargs))) + "\n" +
                               trace_string + "\n" )
+
+
+  def __cache( self, method_name, *args, **kwargs ):
+    """
+    Store a call descriptor
+
+    """
+    trace_string      = method_name + " "
+    for f in inspect.stack():
+      trace_string = trace_string + f[1] + " " + f[3] + " "
+
+    to_hash                = self.__get_hash(args, trace_string, kwargs)
+    call_hash              = sha1( to_hash ).hexdigest()
+    cd                     = call_descriptor.fetch( call_hash )
+    if not cd:
+      callable  = self.__store__['callables'][method_name]
+      if hasattr( callable, '__class__' ) and callable.__class__ == LazyBones:
+          callable = callable.init()
+      returnval = callable(*args, **kwargs)
+      cd = call_descriptor.CallDescriptor( hash      = call_hash,
+                                           stack     = trace_string,
+                                           method    = method_name,
+                                           returnval = returnval,
+                                           args      = args,
+                                           kwargs    = kwargs )
+      cd.save()
+      self.last_cached = call_hash
+    else:
+      returnval = cd.returnval
+
+    if inspect.isclass(returnval):
+      returnval = LazyBones( callable, args, kwargs )
+
+    return returnval
 
   def __wrap( self, method_name ):
     """
@@ -103,86 +166,169 @@ class Wrapper( object ):
     :param str method_name: The name of the method precisely as it's called on
     the object to wrap.
 
-    :rtype: lambda function.
+    :rtype lambda function:
     """
-    def append_and_return( self, *args, **kwargs ):
-      trace_string      = method_name + " "
-      for f in inspect.stack():
-        trace_string = trace_string + f[1] + " " + f[3] + " "
-
-      to_hash                = self.__get_hash(args, trace_string, kwargs)
-      call_hash              = sha1( to_hash ).hexdigest()
-      cd                     = call_descriptor.fetch( call_hash )
-      if not cd:
-        returnval = (self.__store__['methods'][method_name])(*args, **kwargs)
-        cd = call_descriptor.CallDescriptor( hash      = call_hash,
-                                             stack     = trace_string,
-                                             method    = method_name,
-                                             returnval = returnval,
-                                             args      = args,
-                                             kwargs    = kwargs )
-        cd.save()
-        self.last_cached = call_hash
-      return cd.returnval
-
-    return lambda *args, **kwargs: Facade( append_and_return( self, *args, **kwargs ), list(self.__exclusion_list) )
+    return lambda *args, **kwargs: Facade( self.__cache( method_name, *args, **kwargs ), list(self.__exclusion_list) )
 
   def __getattr__( self, key ):
-    if key not in self.__store__:
-        raise Exception( "Key, " + str( key ) + " has not been set in the facade! Method is undefined." )
+    if key not in self.__store__: # Attempt to lazy load the method (assuming __getattr__ is set on the incoming object)
+        try:
+            oo = self['__original_object']
+            if hasattr( oo, '__class__' ) and oo.__class__ == LazyBones:
+                oo = oo.init()
+            val = eval( "oo." + key )
+            self.__store_any(oo, key, val)
+        except: 
+            raise Exception( "Key, " + str( key ) + " has not been set in the facade and failed to lazy load! Method is undefined." )
+
     val = self.__store__[key]
+
     if val and type(val) == tuple and val[0] == 'attr':
         return Facade(val[1])
+    
     return self.__store__[ key ]
 
   def wrapper__get_store(self):
+      """
+      Returns the method/attribute store of the wrapper
+      
+      """
       return self.__store__
 
+  def __store_callable(self, o, method_name, member):
+    """
+    Stores a callable member to the private __store__
 
-  def __init__( self, o, exclusion_list=[] ):
+    :param mixed o: Any callable (function or method)
+    :param str method_name: The name of the attribute
+    :param mixed member: A reference to the member
+
+    """
+    self.__store__['callables'][method_name] = eval( "o." + method_name )
+    self.__store__['callables'][method_name[0].lower() + method_name[1:]] = eval( "o." + method_name )
+    ret_val = self.__wrap( method_name )
+    self.__store__[ method_name ] = ret_val
+    self.__store__[ method_name[0].lower() + method_name[1:] ] = ret_val
+
+  def __store_class(self, o, method_name, member):
+    """
+    Stores a class to the private __store__
+
+    :param class o: The class to store
+    :param str method_name: The name of the method
+    :param class member: The actual class definition
+    """
+    self.__store__['callables'][method_name] = eval( "o." + method_name )
+    self.__store__['callables'][method_name[0].lower() + method_name[1:]] = eval( "o." + method_name )
+    ret_val = self.__wrap( method_name )
+    self.__store__[ method_name ] = ret_val
+    self.__store__[ method_name[0].lower() + method_name[1:] ] = ret_val
+    
+  def __store_nonprimitive(self, o, method_name, member):
+    """
+    Stores any 'non-primitive'. A primitive is in ( float, long, str, int, dict, list, unicode, tuple, set, frozenset, datetime.datetime, datetime.timedelta )
+
+    :param mixed o: The non-primitive to store
+    :param str method_name: The name of the attribute
+    :param mixed member: The reference to the non-primitive
+
+    """
+    self.__store__[ method_name ] = ( 'attr', member )
+    self.__store__[ method_name[0].lower() + method_name[1:] ] = ( 'attr', member )
+
+  def __store_other(self, o, method_name, member):
+    """
+    Stores a reference to an attribute on o
+
+    :param mixed o: Some object
+    :param str method_name: The name of the attribute
+    :param mixed member: The attribute
+    
+    """
+    self.__store__[ method_name ] = eval( "o." + method_name )
+    self.__store__[ method_name[0].lower() + method_name[1:] ] = eval( "o." + method_name )
+
+  def __save_reference(self, o, cls, args, kwargs):
+    """
+    Saves a reference to the original object Facade is passed. This will either
+    be the object itself or a LazyBones instance for lazy-loading later
+
+    :param mixed o: The original object
+    :param class cls: The class definition for the original object
+    :param tuple args: The positional arguments to the original object
+    :param dict kwargs: The keyword arguments to the original object
+    
+    """
+    if not o and cls:
+        self['__original_object'] = LazyBones( cls, args, kwargs )
+    else:
+        while hasattr( o, '__class__' ) and o.__class__ == Wrapper:
+            o = o.wrapper__unwrap()
+        self['__original_object'] = o
+
+  def __store_any(self, o, method_name, member):
+    """
+    Determines type of member and stores it accordingly
+
+    :param mixed o: Any parent object
+    :param str method_name: The name of the method or attribuet
+    :param mixed member: Any child object
+    
+    """
+    if should_exclude( eval( "o." + method_name ), self.__exclusion_list ):
+        self.__store__[ method_name ] = eval( "o." + method_name )
+        return
+
+    if hasattr( member, '__call__' ):
+        self.__store_callable( o, method_name, member )
+    elif inspect.isclass( member ):
+        self.__store_class( o, method_name, member ) # Default ot lazy-loading classes here.
+    elif not is_primitive( member ):
+        self.__store_nonprimitive( o, method_name, member )
+    else:
+        self.__store_other( o, method_name, member )
+
+  def __init__( self, o=None, exclusion_list=[], cls=None, args=tuple(), kwargs={} ):
     """
     The init method for the Wrapper class.
 
     :param mixed o: Some object to wrap.
     :param list exclusion_list: The list of types NOT to wrap
+    :param class cls: The class definition for the object being mocked
+    :param tuple args: The arguments for the class definition to return the desired instance
+    :param dict kwargs: The keywork arguments for the class definition to return the desired instance
 
     """
-    self.__store__ = dict()
-    store = self.__store__
-    store[ 'methods' ] = {}
-    self.__original_object = o
-    self.__exclusion_list = exclusion_list
+    self.__store__            = {'callables': {}}
+    self.__class              = cls
+    self.__args               = args
+    self.__kwargs             = kwargs
+    self.__exclusion_list     = exclusion_list
 
-    for method_name, member in inspect.getmembers( o ):
-        if USE_CALIENDO:
-            if should_exclude( eval( "o." + method_name ), self.__exclusion_list ):
-                self.__store__[ method_name ] = eval( "o." + method_name )
-                continue
-            if inspect.ismethod(member) or inspect.isfunction(member) or inspect.isclass(member):
-                self.__store__['methods'][method_name] = eval( "o." + method_name )
-                ret_val                                = self.__wrap( method_name )
-                self.__store__[ method_name ]          = ret_val
-            elif not is_primitive(member):
-                self.__store__[ method_name ] = ( 'attr', member )
-            else:
-                self.__store__[ method_name ] = eval( "o." + method_name )
-        else:
-            self.__store__[ method_name ]              = eval( "o." + method_name )
+    self.__save_reference(o, cls, args, kwargs)
 
-    try: # Fail gracefully for non-iterables
+    for method_name, member in inspect.getmembers(o):
+        self.__store_any(o, method_name, member)
+
+    try: # try-except because o is mixed type
         if o.wrapper__get_store: # For wrapping facades in a chain.
             store = o.wrapper__get_store()
             for key, val in store.items():
-                self.__store__[key] = val # TODO: Ensure we don't need to update/ namespace store['methods']
+                if key == 'callables':
+                    self.__store__[key].update( val )
+                self.__store__[key] = val 
     except:
         pass
 
-def Facade( some_instance, exclusion_list=[] ):
+def Facade( some_instance=None, exclusion_list=[], cls=None, args=tuple(), kwargs={}  ):
     """
     Top-level interface to the Facade functionality. Determines what to return when passed arbitrary objects.
 
     :param mixed some_instance: Anything.
     :param list exclusion_list: The list of types NOT to wrap
+    :param class cls: The class definition for the object being mocked
+    :param tuple args: The arguments for the class definition to return the desired instance
+    :param dict kwargs: The keywork arguments for the class definition to return the desired instance
 
     :rtype instance: Either the instance passed or an instance of the Wrapper wrapping the instance passed.
     """
@@ -194,6 +340,6 @@ def Facade( some_instance, exclusion_list=[] ):
           some_instance.wrapper__delete_last_cached = lambda : None
         return some_instance # Just give it back.
     else:
-        if is_primitive(some_instance):
+        if is_primitive(some_instance) and not cls:
             return some_instance
-        return Wrapper(some_instance, list(exclusion_list))
+        return Wrapper(o=some_instance, exclusion_list=list(exclusion_list), cls=cls, args=args, kwargs=kwargs )
