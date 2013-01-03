@@ -332,8 +332,6 @@ def Facade( some_instance=None, exclusion_list=[], cls=None, args=tuple(), kwarg
 
     :rtype instance: Either the instance passed or an instance of the Wrapper wrapping the instance passed.
     """
-    print "USE_CALIENDO: ", USE_CALIENDO
-    print "SHOULD EXCLUDE: ", should_exclude( some_instance, exclusion_list )
     if not USE_CALIENDO or should_exclude( some_instance, exclusion_list ):
         if not is_primitive(some_instance):
           # Provide dummy methods to prevent errors in implementations dependent

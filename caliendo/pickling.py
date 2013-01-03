@@ -36,7 +36,6 @@ def objwalk(obj, path=(), memo=None):
     :rtype <tuple<tuple>, <mixed>>: The path to the value on the object, the value.
     """
     global MAX_DEPTH
-    #sys.stderr.write( str( path ) + "\n" )
     if len( path ) > MAX_DEPTH + 1:
         yield path, obj # Truncate it!
         raise StopIteration()
@@ -80,7 +79,7 @@ def setattr_at_path( obj, path, val ):
             else:
                 target = target[attr]
         except:
-            print sys.exc_info(), "setattr ATTR WAS:", attr
+            pass
     # Ensures we set by reference
     try:
         setattr( target, last_attr, val )
@@ -98,6 +97,8 @@ def truncate_attr_at_path( obj, path ):
     """
     target = obj
     last_attr = path[-1]
+    message = []
+
     if type(last_attr) == tuple:
         last_attr = last_attr[-1]
     for attr in path[0:-1]:
@@ -105,53 +106,30 @@ def truncate_attr_at_path( obj, path ):
             if type(attr) in ( str, unicode ) and target and hasattr( target, attr ) and hasattr( target, '__getitem__' ):
                 target = getattr( target, attr )
             elif target:
-                try:
-                    target = target[attr]
-                except:
-                    target = eval( "target." + str( attr ) )
-        except:
-            print sys.exc_info(), "truncate ATTR WAS:", attr
-    # Ensures we set by reference
-        try:
-            if not target:
-                return
-        except:
-            return
-        if isinstance( target, ( tuple, list ) ):
-            target = list(target)
-    try:
-        message = []
-
-        try:
-            del_statement = "del target." + str( last_attr )
-            eval( del_statement )
-            return
+                try: target = target[attr]
+                except: target = eval( "target." + str( attr ) )
         except:
             pass
-            
-        if type( last_attr ) in ( str, unicode ) and target and hasattr( target, last_attr ):
-            try:
-                delattr( target, last_attr )
-            except:
-                message.append("Failed to delete attribute" + str(last_attr) + "on target" + str(target) )
-        elif type(target) == list:
-            try:
-                target.pop(last_attr)
-            except:
-                message.append( "Failed to delete value on list" + str(target) + "at index" + str(last_attr) )
-        else:
-            try:
-                del target[str(last_attr)]
-            except:
-                message.append( "failed to delete attribute on subscriptable object" )
-    except:
-        pass
+        try:
+            if not target: return
+        except: return
+        if isinstance( target, ( tuple, list ) ): target = list(target)
+    
+    try:
+        del_statement = "del target." + str( last_attr )
+        eval( del_statement )
+        return
+    except: pass
 
-    if message:
-        print "=============================================================================="
-        print "Preparing to delete", path, "on", obj, "target is of type:", type( target )
-        print "\n".join( message )
-        print "=============================================================================="
+    if type( last_attr ) in ( str, unicode ) and target and hasattr( target, last_attr ):
+        try: delattr( target, last_attr )
+        except: message.append("Failed to delete attribute" + str(last_attr) + "on target" + str(target) )
+    elif type(target) == list:
+        try: target.pop(last_attr)
+        except: message.append( "Failed to delete value on list" + str(target) + "at index" + str(last_attr) )
+    else:
+        try: del target[str(last_attr)]
+        except: message.append( "failed to delete attribute on subscriptable object" )
 
 def pickle_with_weak_refs( o ):
     """
@@ -161,18 +139,13 @@ def pickle_with_weak_refs( o ):
 
     :rtype str: The pickled object
     """
-    sys.stderr.write( "Pickling with weak refs\n" )
     try:
-        sys.stderr.write( "Attempting to pickle...\n" )
         return pickle.dumps(o)
     except:
-        sys.stderr.write( "Pickling with weak refs...\n" )
         walk = dict([ (path,val) for path, val in objwalk(o)])
-        sys.stderr.write( "\n".join( [ str( ( path, val ) ) for path, val in walk ] ) )
         for path, val in walk.items():
             if len(path) > MAX_DEPTH or is_lambda(val):
                 truncate_attr_at_path(o, path)
             if type(val) == weakref.ref:
-                print "RESOLVING WEAK REF:", val
                 setattr_at_path( o, path, val() ) # Resolve weak references
         return pickle.dumps(o)
