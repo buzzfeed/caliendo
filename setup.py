@@ -11,7 +11,7 @@ except ImportError:
 
 setup(
     name='caliendo',
-    version='v0.2.0',
+    version='v0.2.1',
     packages=find_packages(),
     author='Andrew Kelleher',
     author_email='andrew.kelleher@buzzfeed.com',
