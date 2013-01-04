@@ -15,6 +15,8 @@ import caliendo
 from caliendo.call_descriptor import CallDescriptor, fetch
 from caliendo.facade import Facade
 from caliendo.facade import Wrapper
+from caliendo.facade import cache
+
 from caliendo.util import serialize_args
 
 USE_CALIENDO = config.should_use_caliendo( )
@@ -538,6 +540,116 @@ class  CaliendoTestCase(unittest.TestCase):
         }
         b = pickle.loads(pickling.pickle_with_weak_refs(a))
         self.assertEquals( b, {'a': {'b': {'c': [{}, {}]}}, 'b': {'a': 1, 'b': 2}} )
+
+    def test_cache_positional(self):
+
+        def positional(x, y, z):
+            CallOnceEver().update()
+            return x + y + z
+
+        def test(fh):
+            result = cache( positional, args=(1,2,3) )
+            fh.write(str(result == 6))
+            fh.close()
+            os._exit(0)
+
+        outputs = [ tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False) ]
+
+        for output in outputs:
+            pid = os.fork()
+            if pid:
+                os.waitpid(pid, 0)
+            else:
+                test(output)
+
+        expected = ['True', 'True', 'True']
+        result   = []
+
+        for output in outputs:
+            output.close()
+
+            fh = open(output.name)
+            result.append(fh.read())
+            fh.close()
+
+            os.remove(output.name)
+
+        self.assertEqual(result, expected)
+
+    def test_cache_keyword(self):
+        def keyword(x=1, y=1, z=1):
+            CallOnceEver().update()
+            return x + y + z
+
+        def test(fh):
+            result = cache( keyword, kwargs={ 'x': 1, 'y': 2, 'z': 3 } )
+            fh.write(str(result == 6))
+            fh.close()
+            os._exit(0)
+
+        outputs = [ tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False) ]
+
+        for output in outputs:
+            pid = os.fork()
+            if pid:
+                os.waitpid(pid, 0)
+            else:
+                test(output)
+
+        expected = ['True', 'True', 'True']
+        result   = []
+
+        for output in outputs:
+            output.close()
+
+            fh = open(output.name)
+            result.append(fh.read())
+            fh.close()
+
+            os.remove(output.name)
+
+        self.assertEqual(result, expected)
+
+    def test_cache_mixed(self):
+        def mixed(x, y, z=1):
+            CallOnceEver().update()
+            return x + y + z
+
+        def test(fh):
+            result = cache( mixed, args=(1,2), kwargs={'z': 3 } )
+            fh.write(str(result == 6))
+            fh.close()
+            os._exit(0)
+
+        outputs = [ tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False) ]
+
+        for output in outputs:
+            pid = os.fork()
+            if pid:
+                os.waitpid(pid, 0)
+            else:
+                test(output)
+
+        expected = ['True', 'True', 'True']
+        result   = []
+
+        for output in outputs:
+            output.close()
+
+            fh = open(output.name)
+            result.append(fh.read())
+            fh.close()
+
+            os.remove(output.name)
+
+        self.assertEqual(result, expected)
+
 
 if __name__ == '__main__':
     unittest.main()

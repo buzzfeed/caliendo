@@ -45,6 +45,12 @@ def should_exclude(type_or_instance, exclusion_list):
 
     return False
 
+def get_hash(args, trace_string, kwargs):
+      return (str(frozenset(util.serialize_args(args))) + "\n" +
+                              str( counter.counter.get_from_trace( trace_string ) ) + "\n" +
+                              str(frozenset(util.serialize_args(kwargs))) + "\n" +
+                              trace_string + "\n" )
+
 class LazyBones:
     """
     A simple wrapper for lazy-loading arbitrary classes
@@ -119,10 +125,7 @@ class Wrapper( dict ):
       :rtype str: The sha1 hashed result of the inputs plus a thuper-sthecial counter incremented in the local context of the call
       
       """
-      return (str(frozenset(util.serialize_args(args))) + "\n" +
-                              str( counter.counter.get_from_trace( trace_string ) ) + "\n" +
-                              str(frozenset(util.serialize_args(kwargs))) + "\n" +
-                              trace_string + "\n" )
+      return get_hash(args, trace_string, kwargs)
 
 
   def __cache( self, method_name, *args, **kwargs ):
@@ -343,3 +346,26 @@ def Facade( some_instance=None, exclusion_list=[], cls=None, args=tuple(), kwarg
         if is_primitive(some_instance) and not cls:
             return some_instance
         return Wrapper(o=some_instance, exclusion_list=list(exclusion_list), cls=cls, args=args, kwargs=kwargs )
+
+def cache( handle=lambda *args, **kwargs: None, args=(), kwargs={} ):
+    """
+    Store a call descriptor
+
+    """
+    trace_string      = handle.__name__ + " "
+    for f in inspect.stack():
+      trace_string = trace_string + f[1] + " " + f[3] + " "
+
+    to_hash                = get_hash(args, trace_string, kwargs)
+    call_hash              = sha1( to_hash ).hexdigest()
+    cd                     = call_descriptor.fetch( call_hash )
+    if not cd:
+      returnval = handle(*args, **kwargs)
+      cd = call_descriptor.CallDescriptor( hash      = call_hash,
+                                           stack     = trace_string,
+                                           method    = handle.__name__,
+                                           returnval = returnval,
+                                           args      = args,
+                                           kwargs    = kwargs )
+      cd.save()
+    return cd.returnval
