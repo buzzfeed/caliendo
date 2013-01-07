@@ -359,6 +359,7 @@ def cache( handle=lambda *args, **kwargs: None, args=(), kwargs={} ):
     to_hash                = get_hash(args, trace_string, kwargs)
     call_hash              = sha1( to_hash ).hexdigest()
     cd                     = call_descriptor.fetch( call_hash )
+    
     if not cd:
       returnval = handle(*args, **kwargs)
       cd = call_descriptor.CallDescriptor( hash      = call_hash,
@@ -367,5 +368,11 @@ def cache( handle=lambda *args, **kwargs: None, args=(), kwargs={} ):
                                            returnval = returnval,
                                            args      = args,
                                            kwargs    = kwargs )
+
       cd.save()
+    print "=========================="
+    print handle.__name__, ">>", call_hash
+    print cd.args
+    print cd.returnval
+    print "=========================="
     return cd.returnval

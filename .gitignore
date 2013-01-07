@@ -8,3 +8,4 @@ build/
 caliendo.egg*
 cache/
 seeds/
+.DS_Store
