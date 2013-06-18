@@ -347,13 +347,18 @@ def Facade( some_instance=None, exclusion_list=[], cls=None, args=tuple(), kwarg
             return some_instance
         return Wrapper(o=some_instance, exclusion_list=list(exclusion_list), cls=cls, args=args, kwargs=kwargs )
 
-def cache( handle=lambda *args, **kwargs: None, args=(), kwargs={} ):
+def cache( handle=lambda *args, **kwargs: None, args=None, kwargs=None ):
     """
     Store a call descriptor
 
     """
+    if not args:
+        args = tuple()
+    if not kwargs:
+        kwargs = {}
     if not USE_CALIENDO:
         return handle( *args, **kwargs )
+    
     
     trace_string      = handle.__name__ + " "
     for f in inspect.stack():
