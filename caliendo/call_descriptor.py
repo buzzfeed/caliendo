@@ -46,8 +46,8 @@ def fetch( hash ):
 class Buf:
   def __init__(self, methodname, args, returnval, stack):
 
-    args                   = pickling.pickle_with_weak_refs(args)#pickle.dumps( args )
-    returnval              = pickling.pickle_with_weak_refs(returnval)#pickle.dumps( returnval )
+    args                   = pickling.pickle_with_weak_refs(args)
+    returnval              = pickling.pickle_with_weak_refs(returnval)
     
     self.__data            = "".join([ methodname, args, returnval, stack ])
     self.__methodname_len  = len( methodname )

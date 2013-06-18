@@ -1,11 +1,9 @@
 from collections import Mapping, Sequence, Set
 import weakref
 import pickle
-import inspect
 import types
 import copy_reg
 import datetime
-import sys
 
 MAX_DEPTH = 10
 
@@ -138,6 +136,8 @@ def pickle_with_weak_refs( o ):
     :rtype str: The pickled object
     """
     try:
+        if hasattr(o, '__name__') and o.__name__ == 'generator':
+            return pickle.dumps([item for item in o])
         return pickle.dumps(o)
     except:
         walk = dict([ (path,val) for path, val in objwalk(o)])

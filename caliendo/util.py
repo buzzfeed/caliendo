@@ -1,4 +1,5 @@
 import inspect
+import datetime
 
 from caliendo import config
 from caliendo.counter import counter
@@ -15,6 +16,16 @@ if USE_CALIENDO:
     else:
         from caliendo.db.sqlite import delete_io, get_unique_hashes, connection
 
+def is_primitive(var):
+    """
+    Checks if an object is in ( float, long, str, int, dict, list, unicode, tuple, set, frozenset, datetime.datetime, datetime.timedelta )
+    
+    """
+    primitives = ( float, long, str, int, dict, list, unicode, tuple, set, frozenset, datetime.datetime, datetime.timedelta, type(None) )
+    for primitive in primitives:
+        if type( var ) == primitive:
+            return True
+    return False
 
 def serialize_args( args ):
     """
@@ -32,7 +43,15 @@ def serialize_args( args ):
     for arg in args:
         if type( arg ) == type( {} ):
             try:
-                arg_list.append( str( frozenset( arg.items( ) ) ) )
+                name_list = []
+                items = arg.items()
+                for item in items:
+                    if hasattr(item, '__class__') and not is_primitive(item):
+                        name_list.append(item.__class__.__name__)
+                    else:
+                        name_list.append(item)
+                        
+                arg_list.append( str( frozenset( name_list ) ) )
             except:
                 arg_list.append( None )
         else:
