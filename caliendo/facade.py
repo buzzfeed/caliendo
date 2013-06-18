@@ -1,4 +1,5 @@
 from hashlib import sha1
+import os
 import datetime
 import inspect
 from caliendo import util
@@ -16,17 +17,6 @@ if USE_CALIENDO:
         from caliendo.db.flatfiles import delete_io
     else:
         from caliendo.db.sqlite import delete_io
-
-def is_primitive(var):
-    """
-    Checks if an object is in ( float, long, str, int, dict, list, unicode, tuple, set, frozenset, datetime.datetime, datetime.timedelta )
-    
-    """
-    primitives = ( float, long, str, int, dict, list, unicode, tuple, set, frozenset, datetime.datetime, datetime.timedelta, type(None) )
-    for primitive in primitives:
-        if type( var ) == primitive:
-            return True
-    return False
 
 def should_exclude(type_or_instance, exclusion_list):
     """
@@ -135,7 +125,7 @@ class Wrapper( dict ):
         """
         trace_string      = method_name + " "
         for f in inspect.stack():
-            trace_string = trace_string + f[1] + " " + f[3] + " "
+            trace_string = trace_string + os.path.basename(f[1]) + " " + f[3] + " "
     
         to_hash                = self.__get_hash(args, trace_string, kwargs)
         call_hash              = sha1( to_hash ).hexdigest()
@@ -286,7 +276,7 @@ class Wrapper( dict ):
             self.__store_callable( o, method_name, member )
         elif inspect.isclass( member ):
             self.__store_class( o, method_name, member ) # Default ot lazy-loading classes here.
-        elif not is_primitive( member ):
+        elif not util.is_primitive( member ):
             self.__store_nonprimitive( o, method_name, member )
         else:
             self.__store_other( o, method_name, member )
@@ -336,14 +326,14 @@ def Facade( some_instance=None, exclusion_list=[], cls=None, args=tuple(), kwarg
     :rtype instance: Either the instance passed or an instance of the Wrapper wrapping the instance passed.
     """
     if not USE_CALIENDO or should_exclude( some_instance, exclusion_list ):
-        if not is_primitive(some_instance):
+        if not util.is_primitive(some_instance):
             # Provide dummy methods to prevent errors in implementations dependent
             # on the Wrapper interface
             some_instance.wrapper__unwrap = lambda : None
             some_instance.wrapper__delete_last_cached = lambda : None
         return some_instance # Just give it back.
     else:
-        if is_primitive(some_instance) and not cls:
+        if util.is_primitive(some_instance) and not cls:
             return some_instance
         return Wrapper(o=some_instance, exclusion_list=list(exclusion_list), cls=cls, args=args, kwargs=kwargs )
 
@@ -357,7 +347,7 @@ def cache( handle=lambda *args, **kwargs: None, args=(), kwargs={} ):
     
     trace_string      = handle.__name__ + " "
     for f in inspect.stack():
-        trace_string = trace_string + f[1] + " " + f[3] + " "
+        trace_string = trace_string + os.path.basename(f[1]) + " " + f[3] + " "
 
     to_hash                = get_hash(args, trace_string, kwargs)
     call_hash              = sha1( to_hash ).hexdigest()

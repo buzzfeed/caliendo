@@ -11,7 +11,7 @@ except ImportError:
 
 setup(
     name='caliendo',
-    version='v0.2.2',
+    version='v0.2.3',
     packages=find_packages(),
     author='Andrew Kelleher',
     author_email='andrew.kelleher@buzzfeed.com',
@@ -20,6 +20,5 @@ setup(
     test_suite='test.caliendo_test',
     install_requires=[
         'MySQL-python>=1.2.3',
-        'pysqlite==2.6.3',
     ],
 )
