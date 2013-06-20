@@ -1,3 +1,5 @@
+import os
+import sys
 import inspect
 import datetime
 
@@ -8,6 +10,10 @@ from caliendo import call_descriptor
 USE_CALIENDO  = config.should_use_caliendo( )
 CONFIG        = config.get_database_config( )
 
+global test_suite
+
+test_suite = False
+
 if USE_CALIENDO:
     if 'mysql' in CONFIG['ENGINE']:
         from caliendo.db.mysql import delete_io, get_unique_hashes, connection
@@ -15,6 +21,16 @@ if USE_CALIENDO:
         from caliendo.db.flatfiles import delete_io, get_unique_hashes # No connection. It's ok.
     else:
         from caliendo.db.sqlite import delete_io, get_unique_hashes, connection
+
+def register_suite():
+    """
+    Call this method in a module containing a test suite. The stack trace from 
+    which call descriptor hashes are derived will be truncated at this module.
+    
+    """
+    global test_suite
+    frm = inspect.stack()[1]
+    test_suite = os.path.basename(frm[1])
 
 def is_primitive(var):
     """
@@ -162,3 +178,21 @@ def recache( methodname=None, filename=None ):
                 delete_io( hash )
                 deleted = deleted + 1
         return deleted
+    
+def get_stack(method_name):
+    """
+    Returns the stack trace to hash to identify a call descriptor
+    
+    :param str method_name: The calling method.
+    
+    :rtype str:
+    """
+    global test_suite
+    trace_string      = method_name + " "
+    for f in inspect.stack():
+        module_name = os.path.basename(f[1])
+        method_name = f[3]
+        trace_string = trace_string + "%s %s " % (module_name, method_name)
+        if test_suite and module_name == test_suite:
+            return trace_string
+    return trace_string

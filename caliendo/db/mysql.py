@@ -23,11 +23,36 @@ class Connection():
             return self.conn
         self.conn = mysql_connect( **params )
         if not self.conn:
-          message = "Could not connect to mysql database " + dbname 
-          raise Exception( message ) 
+            raise Exception( "Error connecting to db." ) 
         return self.conn
 
 connection = Connection()
+
+def _do_insert(sql, args):
+    try:
+        con = connection.connect()
+        cur = con.cursor()
+        rc = cur.execute(sql, args)
+        con.commit()
+        return rc
+    except:
+        logger.warning("Failed to insert %s" % sql)
+    finally:
+        if con.open:
+            con.close()
+
+def _fetchall(sql, args):
+    try:
+        con = connection.connect()
+        cur = con.cursor()
+        cur.execute(sql, args)
+        return cur.fetchall()
+    except:
+        logger.warning("Caliendo failed to select")
+    finally:
+        if con.open:
+            con.close()
+    
 
 def insert_io( args ):
     """
@@ -37,7 +62,7 @@ def insert_io( args ):
 
     :rtype None:
     """
-    sql = """
+    return _do_insert("""
           INSERT INTO test_io ( 
             hash,
             stack,
@@ -45,12 +70,9 @@ def insert_io( args ):
             methodname, 
             args, 
             returnval
-          ) VALUES ( %(hash)s, %(stack)s, %(packet_num)s, %(methodname)s, %(args)s, %(returnval)s )"""
-    con = connection.connect()
-    cur = con.cursor()
-    a = args
+          ) VALUES ( %(hash)s, %(stack)s, %(packet_num)s, %(methodname)s, %(args)s, %(returnval)s );""", args)
 
-    return cur.execute( sql, a )
+        
 
 def select_io( hash ):
     """
@@ -60,20 +82,9 @@ def select_io( hash ):
 
     :rtype list(tuple( hash, stack, methodname, returnval, args, packet_num )):
     """
-    try:
-        res = None
-        sql = "SELECT hash, stack, methodname, returnval, args, packet_num  FROM test_io WHERE hash = '%s' ORDER BY packet_num ASC" % hash
-        con = connection.connect()
-        cur = con.cursor()
-        cur.execute( sql )
-        res = cur.fetchall()
-    except:
-        logger.warning( "Caliendo failed in select_io: " + str(sys.exc_info()) + "\n" )
-    finally:
-        if con.open:
-            con.close()
-    return res 
-
+    return _fetchall("SELECT hash, stack, methodname, returnval, args, packet_num  FROM test_io WHERE hash = %(hash)s ORDER BY packet_num ASC;", 
+                     {'hash': hash})
+    
 def insert_test( hash, random, seq ):
     """
     Inserts a random value and sequence for a local call counter
@@ -84,16 +95,9 @@ def insert_test( hash, random, seq ):
 
     :rtype None:
     """
-    try:
-        sql = "INSERT INTO test_seed ( hash, random, seq ) VALUES ( %(hash)s, %(random)s, %(seq)s )"
-        con = connection.connect()
-        cur = con.cursor()
-        cur.execute( sql, {'hash': hash, 'random': random, 'seq': seq} )
-    except:
-        logger.warning( "Caliendo failed in insert_test: " + str(sys.exc_info()) + "\n" )
-    finally:
-        if con.open:
-            con.close()
+    return _do_insert( "INSERT INTO test_seed ( hash, random, seq ) VALUES ( %(hash)s, %(random)s, %(seq)s );", 
+                       {'hash': hash, 'random': random, 'seq': seq} )
+
 def select_test( hash ):
     """
     Returns the seed values associated with a function call
@@ -102,20 +106,7 @@ def select_test( hash ):
 
     :rtype [tuple(<string>, <string>)]:
     """
-    try:
-        con = None
-        res = None
-        sql = "SELECT random, seq FROM test_seed WHERE hash = '%s'" % hash
-        con = connection.connect()
-        cur = con.cursor()
-        cur.execute( sql )
-        res = cur.fetchall()
-    except:
-        logger.warning( "Caliendo failed in select_test: " + str(sys.exc_info()) + "\n" )
-    finally:
-        if con.open:
-            con.close()
-    return res
+    return _fetchall("SELECT random, seq FROM test_seed WHERE hash = %(hash)s;", {'hash': hash})
 
 def delete_io( hash ):
     """
@@ -131,6 +122,7 @@ def delete_io( hash ):
         con = connection.connect()
         cur = con.cursor()
         res = cur.execute( sql, { 'hash': hash } )
+        con.commit()
     except:
         logger.warning( "Caliendo failed in delete_io: " + str(sys.exc_info()) + "\n" )
     finally:
@@ -144,16 +136,4 @@ def get_unique_hashes():
 
     :rtype list(<string>)
     """
-    try:
-        res = []
-        sql = "SELECT DISTINCT hash FROM test_io;"
-        con = connection.connect()
-        cur = con.cursor()
-        cur.execute(sql)
-        res = cur.fetchall()
-    except:
-        logger.warning( "Caliendo failed in get_unique_hashes: " + str(sys.exc_info()))
-    finally:
-        if con.open:
-            con.close()
-    return [ h[0] for h in res ]
+    return [h[0] for h in _fetchall("SELECT DISTINCT hash FROM test_io;", {})]
