@@ -16,11 +16,17 @@ from caliendo.call_descriptor import CallDescriptor, fetch
 from caliendo.facade import Facade
 from caliendo.facade import Wrapper
 from caliendo.facade import cache
+from caliendo.util import is_primitive
+from caliendo import util
 
-from caliendo.util import serialize_args
+from caliendo.util import serialize_args, recache
 
 USE_CALIENDO = config.should_use_caliendo( )
 CONFIG       = config.get_database_config( )
+
+from caliendo.util import recache
+
+recache()
 
 class TestModel:
     def __init__(self, a, b):
@@ -91,7 +97,6 @@ class LazyBones(dict):
             return self.store[attr]
 
 class  CaliendoTestCase(unittest.TestCase):
-
     def test_call_descriptor(self):
         hash      = hashlib.sha1( "adsf" ).hexdigest()
         method    = "mymethod"
@@ -227,25 +232,34 @@ class  CaliendoTestCase(unittest.TestCase):
         hashes = []
 
         self.assertEquals( mtc.methoda( ), mtc_f.methoda( ) )
+        self.assertIsNotNone(mtc_f.last_cached)
         hashes.append( mtc_f.last_cached )
         self.assertEquals( mtc.methodb( ), mtc_f.methodb( ) )
+        self.assertIsNotNone(mtc_f.last_cached)
         hashes.append( mtc_f.last_cached )
         self.assertEquals( mtc_f.methoda( ), "a" )
+        self.assertIsNotNone(mtc_f.last_cached)
         hashes.append( mtc_f.last_cached )
 
         self.assertEquals( mtc_f.increment( ), 1 )
+        self.assertIsNotNone(mtc_f.last_cached)
         hashes.append( mtc_f.last_cached )
         self.assertEquals( mtc_f.increment( ), 2 ) 
+        self.assertIsNotNone(mtc_f.last_cached)
         hashes.append( mtc_f.last_cached )
         self.assertEquals( mtc_f.increment( ), 3 ) 
+        self.assertIsNotNone(mtc_f.last_cached)
         hashes.append( mtc_f.last_cached )
         self.assertEquals( mtc_f.increment( ), 4 )
+        self.assertIsNotNone(mtc_f.last_cached)
         hashes.append( mtc_f.last_cached )
 
         # Ensure hashes are now in db:
         for hash in hashes:
+            self.assertIsNotNone(hash, "Hash is none. whoops.")
             cd = fetch( hash )
-            self.assertEquals( cd.hash, hash )
+            self.assertTrue( cd is not None, "%s was not found" % hash )
+            self.assertEquals( cd.hash, hash, "%s was not found" % hash )
 
         # Delete some:
         caliendo.util.recache( 'methodb', 'caliendo_test.py' )
@@ -650,6 +664,11 @@ class  CaliendoTestCase(unittest.TestCase):
 
         self.assertEqual(result, expected)
 
+    """
+    @caliendo.facade.patch('caliendo.util.is_primitive')
+    def test_patch(self):
+        assert is_primitive(1) == True
+    """
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,7 +1,8 @@
 from hashlib import sha1
 import os
-import datetime
+import sys
 import inspect
+import importlib
 from caliendo import util
 from caliendo import config
 from caliendo import call_descriptor
@@ -36,10 +37,10 @@ def should_exclude(type_or_instance, exclusion_list):
     return False
 
 def get_hash(args, trace_string, kwargs):
-    return (str(frozenset(util.serialize_args(args))) + "\n" +
+    return sha1((str(frozenset(util.serialize_args(args))) + "\n" +
                               str( counter.counter.get_from_trace( trace_string ) ) + "\n" +
                               str(frozenset(util.serialize_args(kwargs))) + "\n" +
-                              trace_string + "\n" )
+                              trace_string + "\n" )).hexdigest()
 
 class LazyBones:
     """
@@ -123,12 +124,8 @@ class Wrapper( dict ):
         Store a call descriptor
     
         """
-        trace_string      = method_name + " "
-        for f in inspect.stack():
-            trace_string = trace_string + os.path.basename(f[1]) + " " + f[3] + " "
-    
-        to_hash                = self.__get_hash(args, trace_string, kwargs)
-        call_hash              = sha1( to_hash ).hexdigest()
+        trace_string           = util.get_stack(method_name)
+        call_hash              = self.__get_hash(args, trace_string, kwargs)
         cd                     = call_descriptor.fetch( call_hash )
         if not cd:
             c  = self.__store__['callables'][method_name]
@@ -142,6 +139,8 @@ class Wrapper( dict ):
                                                  args      = args,
                                                  kwargs    = kwargs )
             cd.save()
+            if not call_hash:
+                raise Exception("CALL HASH IS NONE")
             self.last_cached = call_hash
         else:
             returnval = cd.returnval
@@ -347,17 +346,13 @@ def cache( handle=lambda *args, **kwargs: None, args=None, kwargs=None ):
     if not kwargs:
         kwargs = {}
     if not USE_CALIENDO:
-        return handle( *args, **kwargs )
+        return handle(*args, **kwargs)
     
-    
-    trace_string      = handle.__name__ + " "
-    for f in inspect.stack():
-        trace_string = trace_string + os.path.basename(f[1]) + " " + f[3] + " "
-
-    to_hash                = get_hash(args, trace_string, kwargs)
-    call_hash              = sha1( to_hash ).hexdigest()
+    trace_string           = util.get_stack(handle.__name__)
+    call_hash              = get_hash(args, trace_string, kwargs)
+        
     cd                     = call_descriptor.fetch( call_hash )
-    
+
     if not cd:
         cd = call_descriptor.CallDescriptor( hash      = call_hash,
                                              stack     = trace_string,
@@ -367,4 +362,19 @@ def cache( handle=lambda *args, **kwargs: None, args=None, kwargs=None ):
                                              kwargs    = kwargs )
 
         cd.save()
+        
     return cd.returnval
+
+def patch(import_path):
+    components = import_path.split('.')
+    method = components.pop()
+    
+    mod = importlib.import_module(".".join(components))
+
+    to_wrap = getattr(mod, method)
+
+    wrapped = lambda *args, **kwargs: cache(handle=to_wrap, args=args, kwargs=kwargs) 
+
+    setattr(mod, method, wrapped)
+
+    return lambda f: f # Transparently return the test.

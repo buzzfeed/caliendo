@@ -106,6 +106,7 @@ def insert_test( hash, random, seq ):
     finally:
         if con:
             con.close()
+            
     return res
 
 def select_test( hash ):
