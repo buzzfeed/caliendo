@@ -19,10 +19,14 @@ from caliendo.facade import cache
 from caliendo.util import is_primitive
 from caliendo import util
 
-from caliendo.util import serialize_args
+from caliendo.util import serialize_args, recache
 
 USE_CALIENDO = config.should_use_caliendo( )
 CONFIG       = config.get_database_config( )
+
+from caliendo.util import recache
+
+recache()
 
 class TestModel:
     def __init__(self, a, b):
