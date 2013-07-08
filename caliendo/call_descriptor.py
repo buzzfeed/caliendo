@@ -46,7 +46,11 @@ def fetch( hash ):
 class Buf:
   def __init__(self, methodname, args, returnval, stack):
 
-    args                   = pickling.pickle_with_weak_refs(args)
+    try:
+        args                   = pickling.pickle_with_weak_refs(args)
+    except:
+        args               = "()"
+        
     returnval              = pickling.pickle_with_weak_refs(returnval)
     
     self.__data            = "".join([ methodname, args, returnval, stack ])
