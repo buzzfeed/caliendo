@@ -3,6 +3,7 @@ import os
 import sys
 import inspect
 import importlib
+from contextlib import contextmanager
 from caliendo import util
 from caliendo import config
 from caliendo import call_descriptor
@@ -365,16 +366,10 @@ def cache( handle=lambda *args, **kwargs: None, args=None, kwargs=None ):
         
     return cd.returnval
 
-def patch(import_path):
-    components = import_path.split('.')
-    method = components.pop()
+def patch(*args, **kwargs):
+    """
+    Deprecated. Patch should now be imported from caliendo.patch.patch
+    """
+    from caliendo.patch import patch
+    return patch(*args, **kwargs)
     
-    mod = importlib.import_module(".".join(components))
-
-    to_wrap = getattr(mod, method)
-
-    wrapped = lambda *args, **kwargs: cache(handle=to_wrap, args=args, kwargs=kwargs) 
-
-    setattr(mod, method, wrapped)
-
-    return lambda f: f # Transparently return the test.
