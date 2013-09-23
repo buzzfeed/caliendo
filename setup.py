@@ -11,14 +11,17 @@ except ImportError:
 
 setup(
     name='caliendo',
-    version='v0.2.4',
+    version='v1.0.1',
     packages=find_packages(),
     author='Andrew Kelleher',
     author_email='andrew.kelleher@buzzfeed.com',
-    description='A facade for wrapping API methods for logging i/o',
-    long_description='A facade for wrapping API methods for logging i/o',
+    description='Makes mocking simpler.',
+    long_description='Allows patching and caching of target methods with VERY little effort.',
     test_suite='test.caliendo_test',
     install_requires=[
-        'MySQL-python>=1.2.3',
+        'mock==1.0.0'
     ],
+    extras_require={
+        'mysql': ['MySQL-python>=1.2.3'],
+    }
 )
