@@ -21,6 +21,10 @@ from caliendo import util
 
 from caliendo.util import serialize_args, recache
 
+from nested.bazbiz import baz
+from foobar import bazbiz
+
+
 USE_CALIENDO = config.should_use_caliendo( )
 CONFIG       = config.get_database_config( )
 
@@ -664,11 +668,62 @@ class  CaliendoTestCase(unittest.TestCase):
 
         self.assertEqual(result, expected)
 
-    """
-    @caliendo.facade.patch('caliendo.util.is_primitive')
-    def test_patch(self):
-        assert is_primitive(1) == True
-    """
+    @caliendo.facade.patch('test.nested.bazbiz.baz')
+    def test_patch_sanity(self):
+        b = baz()
+        assert b == 'baz', "Value is %s" % b 
+   
+    @caliendo.facade.patch('test.nested.bazbiz.baz', 'boz')
+    def test_patch_context_a(self):
+        b = baz()
+        assert b == 'boz', "Expected boz got %s" % b
+
+    @caliendo.facade.patch('test.nested.bazbiz.baz', 'bar')
+    def test_patch_context_b(self):
+        b = baz()
+        assert b == 'bar', "Expected bar got %s" % b
+        
+    @caliendo.facade.patch('test.nested.bazbiz.baz', 'biz')
+    def test_patch_depth(self):
+        b = bazbiz()
+        assert b == 'bizbiz'
+
+    @caliendo.facade.patch('test.nested.bazbiz.baz')
+    def test_patched_cache(self):
+        def mixed(x, y, z=1):
+            CallOnceEver().update()
+            return x + y + z
+
+        def test(fh):
+            result = baz() 
+            fh.write(str(result == 'baz'))
+            fh.close()
+            os._exit(0)
+
+        outputs = [ tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False) ]
+
+        for output in outputs:
+            pid = os.fork()
+            if pid:
+                os.waitpid(pid, 0)
+            else:
+                test(output)
+
+        expected = ['True', 'True', 'True']
+        result   = []
+
+        for output in outputs:
+            output.close()
+
+            fh = open(output.name)
+            result.append(fh.read())
+            fh.close()
+
+            os.remove(output.name)
+
+        self.assertEqual(result, expected)
 
 if __name__ == '__main__':
     unittest.main()

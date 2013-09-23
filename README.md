@@ -69,20 +69,80 @@ export CALIENDO_CACHE_PREFIX=/some/absolute/path
    writing flat files as described in 1. (Probably because your Django 
    settings module isn't on the path.)
 
-# Importing
-
-The class that provides mock-objects in `caliendo` is called `Facade`. You can
-import it like:
-
-```python
-from caliendo.facade import Facade
-```
-
 # Examples
 
 Here are a few basic examples of use.
 
-## Basic invocation
+## The cache.
+
+Caliendo offers a cache which decorates callables. If you pass the cache the handle for the callable, and the args/kwargs; it will be 'cached'. The behavior is a little complex. Explained below:
+  *When the method is called the first time a counter is issued that is keyed on a hash of the stack trace and a serialization of the function parameters. 
+  *If/When a matching hash is generated (e.g. a method is called with the same parameters by the same calling method the counter is incremented. 
+  *With each unique counter the result of the function call is pickled and stored matching a CallDescriptor. If a return value can't be pickled caliendo will attempt to munge it. If caliendo fails to munge it an error will be thrown. 
+  *When a method is called that matches an existing counter; the stored CallDescriptor rebuilds the original call and the original return value is returned by the cache. 
+
+```python
+from caliendo.facade import cache
+
+global side_effect
+side_effect = 0
+def foo():
+  global side_effect
+  side_effect += 1
+  return side_effect
+
+for i in range(3):
+  assert cache(handle=foo) == i + 1
+
+print side_effect
+```
+
+When the above example is run the first time; it will print 2. For every subsequent time it is run it will print 0 unless caliendo's cache is cleared.
+
+## Service patching. 
+
+An interface inspired greatly by python Mock is `patch()`.
+
+`patch()` is intended to be used as a decorator for integration/unit tests that need to be decoupled from external services.
+
+When `patch` is called it returns the test it decorates in the context of the specified method replaced by it's `caliendo.facade.cache` decorated version.
+
+When the decorated test is invoked it is patched at runtime. After the test returns it is automatically unpatched.
+
+`patch`, by default, uses `caliendo.facade.cache`. If you pass an `rvalue` as the second parameter; your patched method will return that value.
+
+```python
+
+# Pretend these methods are all defined in various modules in the codebase.
+# Let foo() be defined in api.services.foos
+def foo():
+  return 'foo'
+# Let bar() be defined in api.services.bars
+def bar():
+  return foo()
+# Let baz be defined in api.bazs
+def baz():
+  return bar()
+
+# Now for our test suite.
+import unittest
+from caliendo.patch import patch
+from api.bazs import baz
+
+class ApiTest(unittest.TestCase):
+
+  @patch('api.services.bars.bar', rvalue='biz')
+  def test_baz(self):
+    assert baz() == 'biz'
+```
+
+In the above example `bar` is nested in the service layer of the architecture. We can import it once at the head of the test suite and effectively patch it at the test's invocation. 
+
+We set the rvalue to 'biz', but if we left it alone the value 'foo' would have been cached on the initial run. Every subsequent run would not have called the `foo` or `bar` method, and would have simply returned the cached value from the initial invokation of the test. 
+
+## The Facade 
+
+This is the buggiest feature of `caliendo`. 
 
 If you have an api you want to run under Caliendo you can invoke it like so:
 
