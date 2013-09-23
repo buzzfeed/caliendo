@@ -1,46 +1,7 @@
 from contextlib import contextmanager
+from mock import _get_target
+
 from caliendo.facade import cache
-
-def _dot_lookup(thing, comp, import_path):
-    """
-    Import one attribute from an imported module at the end of it's dot path. 
-   
-    :rtype <module>: 
-    """
-    try:
-        return getattr(thing, comp)
-    except AttributeError:
-        __import__(import_path)
-        return getattr(thing, comp)
-
-def _importer(target):
-    """
-    Imports a target along a dot path.
-
-    :rtype mixed: An imported module or member
-    """
-    components = target.split('.')
-    import_path = components.pop(0)
-    thing = __import__(import_path)
-
-    for comp in components:
-        import_path += ".%s" % comp 
-        thing = _dot_lookup(thing, comp, import_path)
-    return thing
-
-def _get_target(target):
-    """
-    Returns an imported module referenced along a dot path and the attribute 
-    name to reference a method or class. 
-    
-    :rtype tuple(module, str):
-    """
-    try:
-        target, attribute = target.rsplit('.', 1)
-    except (TypeError, ValueError):
-        raise TypeError("Need a valid target to patch. You supplied: %r" %
-                        (target,))
-    return _importer(target), attribute
 
 @contextmanager
 def patch_in_place(import_path, rvalue=None):
@@ -60,11 +21,11 @@ def patch_in_place(import_path, rvalue=None):
     """
     try:
         getter, attribute = _get_target(import_path)
-        original = getattr(getter, attribute)
+        original = getattr(getter(), attribute)
         if rvalue == None:
-            setattr(getter, attribute, lambda *args, **kwargs: cache(handle=original, args=args, kwargs=kwargs))
+            setattr(getter(), attribute, lambda *args, **kwargs: cache(handle=original, args=args, kwargs=kwargs))
         else:
-            setattr(getter, attribute, lambda *args, **kwargs: rvalue)
+            setattr(getter(), attribute, lambda *args, **kwargs: rvalue)
         yield None
     except:
         setattr(getter, attribute, original)
