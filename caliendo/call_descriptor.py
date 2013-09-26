@@ -25,7 +25,7 @@ def fetch( hash ):
     :rtype: CallDescriptor corresponding to the hash passed or None if it wasn't found.
     """
     res = select_io( hash )
-    
+
     if res:
       p = { 'methodname': '', 'returnval': '', 'args': '', 'stack': '' }
       for packet in res:
@@ -50,9 +50,9 @@ class Buf:
         args                   = pickling.pickle_with_weak_refs(args)
     except:
         args               = "()"
-        
+
     returnval              = pickling.pickle_with_weak_refs(returnval)
-    
+
     self.__data            = "".join([ methodname, args, returnval, stack ])
     self.__methodname_len  = len( methodname )
     self.__args_len        = len( args )
