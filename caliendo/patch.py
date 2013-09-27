@@ -1,7 +1,7 @@
 from contextlib import contextmanager
-from mock import _get_target
-
 from caliendo.facade import cache
+
+from mock import _get_target
 
 @contextmanager
 def patch_in_place(import_path, rvalue=None):
@@ -19,13 +19,21 @@ def patch_in_place(import_path, rvalue=None):
     
     :rtype None:
     """
+    def cache_result(*args, **kwargs):
+        return cache(handle=original, args=args, kwargs=kwargs)
+
+    def return_rvalue(*args, **kwargs):
+        return rvalue
+
+    getter, attribute = _get_target(import_path)
+    getter = getter()
+    original = getattr(getter, attribute)
+
     try:
-        getter, attribute = _get_target(import_path)
-        original = getattr(getter(), attribute)
         if rvalue == None:
-            setattr(getter(), attribute, lambda *args, **kwargs: cache(handle=original, args=args, kwargs=kwargs))
+            setattr(getter, attribute, cache_result) 
         else:
-            setattr(getter(), attribute, lambda *args, **kwargs: rvalue)
+            setattr(getter, attribute, return_rvalue) 
         yield None
     except:
         setattr(getter, attribute, original)
@@ -50,7 +58,7 @@ def patch(import_path, rvalue=None): # Need to undo the patch after exiting the 
     def patch_test(unpatched_test):
         def patched_test(*args, **kwargs): 
             with patch_in_place(import_path, rvalue) as nothing:
-                unpatched_test()
+                unpatched_test(*args, **kwargs)
         return patched_test
 
     return lambda unpatched_test: patch_test(unpatched_test) 
