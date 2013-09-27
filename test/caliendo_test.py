@@ -12,6 +12,7 @@ os.environ['USE_CALIENDO'] = 'True'
 from caliendo import config
 
 import caliendo
+from caliendo.facade import patch
 from caliendo.call_descriptor import CallDescriptor, fetch
 from caliendo.facade import Facade
 from caliendo.facade import Wrapper
@@ -24,14 +25,12 @@ from caliendo.util import serialize_args, recache
 from nested.bazbiz import baz
 from foobar import bazbiz
 
-
 USE_CALIENDO = config.should_use_caliendo( )
 CONFIG       = config.get_database_config( )
 
 from caliendo.util import recache
 
 recache()
-
 class TestModel:
     def __init__(self, a, b):
         setattr( self, 'a', a )
@@ -99,7 +98,6 @@ class LazyBones(dict):
         else:
             self.store[attr] = None
             return self.store[attr]
-
 class  CaliendoTestCase(unittest.TestCase):
     def test_call_descriptor(self):
         hash      = hashlib.sha1( "adsf" ).hexdigest()
@@ -668,27 +666,29 @@ class  CaliendoTestCase(unittest.TestCase):
 
         self.assertEqual(result, expected)
 
-    @caliendo.facade.patch('test.nested.bazbiz.baz')
+
+    @patch('test.nested.bazbiz.baz', 'biz')
     def test_patch_sanity(self):
         b = baz()
-        assert b == 'baz', "Value is %s" % b 
-   
-    @caliendo.facade.patch('test.nested.bazbiz.baz', 'boz')
+        assert b == 'biz', "Value is %s" % b
+
+    @patch('test.nested.bazbiz.baz', 'boz')
     def test_patch_context_a(self):
         b = baz()
         assert b == 'boz', "Expected boz got %s" % b
 
-    @caliendo.facade.patch('test.nested.bazbiz.baz', 'bar')
+
+    @patch('test.nested.bazbiz.baz', 'bar')
     def test_patch_context_b(self):
         b = baz()
         assert b == 'bar', "Expected bar got %s" % b
-        
-    @caliendo.facade.patch('test.nested.bazbiz.baz', 'biz')
+
+    @patch('test.nested.bazbiz.baz', 'biz')
     def test_patch_depth(self):
         b = bazbiz()
-        assert b == 'bizbiz'
+        assert b == 'bizbiz', "Expected bizbiz, got %s" % bazbiz()
 
-    @caliendo.facade.patch('test.nested.bazbiz.baz')
+    @patch('test.nested.bazbiz.baz')
     def test_patched_cache(self):
         def mixed(x, y, z=1):
             CallOnceEver().update()
@@ -724,6 +724,9 @@ class  CaliendoTestCase(unittest.TestCase):
             os.remove(output.name)
 
         self.assertEqual(result, expected)
+
+def lalala():
+    pass
 
 if __name__ == '__main__':
     unittest.main()
