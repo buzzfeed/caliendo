@@ -11,3 +11,4 @@ seeds/
 .DS_Store
 .project
 .pydevproject
+.idea
