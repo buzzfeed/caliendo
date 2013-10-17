@@ -8,6 +8,9 @@ build/
 caliendo.egg*
 cache/
 seeds/
+evs/
 .DS_Store
 .project
 .pydevproject
+.idea
+

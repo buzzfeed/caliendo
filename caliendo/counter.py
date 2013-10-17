@@ -1,22 +1,12 @@
 from hashlib import sha1
-import time
 
 from caliendo import config
 
-USE_CALIENDO = config.should_use_caliendo( )
-CONFIG       = config.get_database_config( )
-
-if USE_CALIENDO:
-    if 'mysql' in CONFIG['ENGINE']:
-        from caliendo.db.mysql import insert_test, select_test
-    elif 'flatfiles' in CONFIG['ENGINE']:
-        from caliendo.db.flatfiles import insert_test, select_test
-    else:
-        from caliendo.db.sqlite import insert_test, select_test
+if config.should_use_caliendo():
+    from caliendo.db.flatfiles import insert_test, select_test
 
 class Counter:
     __counters = { }
-    __offset   = 100000
 
     def get_from_trace(self, trace):
         key = sha1( trace ).hexdigest()
@@ -42,8 +32,7 @@ class Counter:
 
     def __set_seed_by_trace(self, trace):
         key = sha1( trace ).hexdigest()
-        self.__offset = int( 1.5 * self.__offset )
-        t = long( time.time() * 10000 )
+        t = 0
         insert_test( hash=key, random=t, seq=t )
         seq = self.__get_seed_from_trace( trace )
         return seq

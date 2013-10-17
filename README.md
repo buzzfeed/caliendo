@@ -22,52 +22,40 @@ parent directory and run:
 pip install ./caliendo
 ```
 
+To run tests you can use the standard unittest module. You'll have various 
+prompts during the process. To run all tests you should use nose with 
+--nocapture. nose capturing interferes with the interactive prompts.
+
+```console
 # Tests
 
-You can run the tests for each datastore method like (from the build root):
-
-For sqlite:
-```console
-env CALIENDO_CONN_STRING='ENGINE=sqlite,NAME=caliendo,USER=,PASSWORD=,HOST=' python test/caliendo_test.py
-```
-
-For mysql:
-```console
-env CALIENDO_CONN_STRING='ENGINE=mysql,NAME=caliendo,USER=caliendo,PASSWORD=caliendo,HOST=localhost' python test/caliendo_test.py
-```
-
-For flatfiles:
-```console
 python test/caliendo_test.py
+
+# or
+
+nosetests --all-modules --nocapture test/
+
 ```
 
 # Configuration
 
-Caliendo requires a supporting database table or file read/write permissions
-for caching objects. The only databases currently supported are sqlite and 
-mysql. One of four scenarios will happen when you import and call caliendo 
-the first time:
+Caliendo requires file read/write permissions for caching objects. The first time
+you invoke tests calling caliendo:
 
-1. No database parameters are passed and caliendo writes to the specified 
-   cache files. The default location is in the caliendo build, caliendo/cache
-   and caliendo/seeds. You can change where caliendo creates these directories 
-   by setting the environment variable:
+1. Caliendo writes to the specified cache files. The default location is in the 
+   caliendo build, caliendo/cache, caliendo/evs, and caliendo/seeds. You can change 
+   where caliendo creates these directories by setting the environment variable:
+
 ```console
 export CALIENDO_CACHE_PREFIX=/some/absolute/path
 ```
 
-2. Caliendo will look for the environment variable, `CALIENDO_CONN_STRING` 
-   for a string of the format: 
-     'ENGINE=[mysql or sqlite],NAME=[database name],USER=[some user],PASSWORD=[password],HOST=[host]'
-   It will attempt to use this string to connect to the specified database.
+2. If you would like to be prompted to overwrite or modify existing cached values
+   you can write the environment variable CALIENDO_PROMPT.
 
-3. Caliendo will load the `DATABASES` object from the module you have set in
-   the `DJANGO_SETTINGS_MODULE` environment variable. It will create a table
-   called `test_io`.
-
-4. Caliendo will fail to load the Django `settings.py` module and default to
-   writing flat files as described in 1. (Probably because your Django 
-   settings module isn't on the path.)
+```console
+export CALIENDO_PROMPT=True
+```
 
 # Examples
 

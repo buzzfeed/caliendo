@@ -1,26 +1,24 @@
 import os
+import types
 import sys
 import inspect
 import datetime
+
+from collections import Iterable
 
 from caliendo import config
 from caliendo.counter import counter
 from caliendo import call_descriptor
 
-USE_CALIENDO  = config.should_use_caliendo( )
-CONFIG        = config.get_database_config( )
-
 global test_suite
+global last_hash
+global current_test
 
+current_test = False
 test_suite = False
 
-if USE_CALIENDO:
-    if 'mysql' in CONFIG['ENGINE']:
-        from caliendo.db.mysql import delete_io, get_unique_hashes, connection
-    elif 'flatfiles' in CONFIG['ENGINE']:
-        from caliendo.db.flatfiles import delete_io, get_unique_hashes # No connection. It's ok.
-    else:
-        from caliendo.db.sqlite import delete_io, get_unique_hashes, connection
+if config.should_use_caliendo():
+    from caliendo.db.flatfiles import delete_io, get_unique_hashes # No connection. It's ok.
 
 def register_suite():
     """
@@ -30,7 +28,7 @@ def register_suite():
     """
     global test_suite
     frm = inspect.stack()[1]
-    test_suite = os.path.basename(frm[1])
+    test_suite = ".".join(os.path.basename(frm[1]).split('.')[0:-1])
 
 def is_primitive(var):
     """
@@ -43,7 +41,33 @@ def is_primitive(var):
             return True
     return False
 
-def serialize_args( args ):
+def serialize_item(item, depth=0, serialized=False):
+    if depth >= 99:
+        return '' # Prevent recursion errors
+    if isinstance(item, tuple):
+        return serialize_item([serialize_item(i, depth=depth+1) for i in item], depth=depth+1, serialized=True)
+    elif isinstance(item, dict):
+        return serialize_item([serialize_item(i, depth=depth+1) for i in item.items()], depth=depth+1, serialized=True)
+    elif isinstance(item, list):
+        if serialized:
+            return str(sorted(item)) # Sort it!
+        else:
+            return serialize_item([serialize_item(i, depth=depth+1) for i in item], depth=depth+1, serialized=True)
+    elif isinstance(item, (types.FunctionType, types.BuiltinMethodType, types.MethodType)):
+        return item.__name__
+    elif isinstance(item, (str, unicode, int, float, long)):
+        return str(item)
+    elif isinstance(item, Iterable):
+        return serialize_item([serialize_item(i, depth=depth+1) for i in item], depth=depth+1, serialized=True)
+    elif hasattr(item, '__class__'):
+        return item.__class__.__name__
+    else:
+        try:
+            return str(item)
+        except:
+            return ''
+
+def serialize_args(args):
     """
     Attempts to serialize arguments in a consistently ordered way.
     If you're having problems getting some CallDescriptors to save it's likely
@@ -53,26 +77,7 @@ def serialize_args( args ):
 
     :rtype: List of arguments, serialized in a consistently ordered fashion.
     """
-    if not args:
-        return ()
-    arg_list = []
-    for arg in args:
-        if type( arg ) == type( {} ):
-            try:
-                name_list = []
-                items = arg.items()
-                for item in items:
-                    if hasattr(item, '__class__') and not is_primitive(item):
-                        name_list.append(item.__class__.__name__)
-                    else:
-                        name_list.append(item)
-                        
-                arg_list.append( str( frozenset( name_list ) ) )
-            except:
-                arg_list.append( None )
-        else:
-            arg_list.append( str( arg ) )
-    return arg_list
+    return serialize_item(args)
 
 def seq():
     """
@@ -193,6 +198,6 @@ def get_stack(method_name):
         module_name = os.path.basename(f[1])
         method_name = f[3]
         trace_string = trace_string + "%s %s " % (module_name, method_name)
-        if test_suite and module_name == test_suite:
+        if test_suite and module_name == test_suite or (module_name == 'patch.py' and method_name == 'patched_test'):
             return trace_string
     return trace_string
