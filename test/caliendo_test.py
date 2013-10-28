@@ -19,18 +19,22 @@ from caliendo.facade import Wrapper
 from caliendo.facade import cache
 from caliendo.util import is_primitive
 from caliendo import util
+from caliendo import expected_value
 
 from caliendo.util import serialize_args, recache
 
 from nested.bazbiz import baz
 from foobar import bazbiz
-
-USE_CALIENDO = config.should_use_caliendo( )
-CONFIG       = config.get_database_config( )
+from api import foobarfoobiz
+from api import foobarfoobaz
+from api import foobar
+from api import foobiz
+from api import foobaz
 
 from caliendo.util import recache
 
 recache()
+
 class TestModel:
     def __init__(self, a, b):
         setattr( self, 'a', a )
@@ -98,7 +102,11 @@ class LazyBones(dict):
         else:
             self.store[attr] = None
             return self.store[attr]
+
 class  CaliendoTestCase(unittest.TestCase):
+    def setUp(self):
+        caliendo.util.register_suite()
+
     def test_call_descriptor(self):
         hash      = hashlib.sha1( "adsf" ).hexdigest()
         method    = "mymethod"
@@ -126,24 +134,118 @@ class  CaliendoTestCase(unittest.TestCase):
         self.assertEqual( cd.returnval, returnval )
         self.assertEqual( cd.args, args )
 
-    def test_serialize_args(self):
+    def test_serialize_basics(self):
         basic_list = [ 'a', 'b', 'c' ]
         basic_dict = { 'a': 1, 'b': 2, 'c': 3 }
         nested_list = [ [ 0, 1, 2 ], [ 3, 4, 5 ] ]
         nested_dict = { 'a': { 'a': 1, 'b': 2 }, 'b': { 'c': 3, 'd': 4 } }
         list_of_nested_dicts = [ { 'a': { 'a': 1, 'b': 2 }, 'b': { 'c': 3, 'd': 4 } } ]
 
-        s_basic_list = str( serialize_args( ( basic_list, ) ) )
-        s_basic_dict = str( serialize_args( ( basic_dict, ) ) )
-        s_nested_list = str( serialize_args( ( nested_list, ) ) )
-        s_nested_dict = str( serialize_args( ( nested_dict, ) ) )
-        s_list_of_nested_dicts = str( serialize_args( ( list_of_nested_dicts, ) ) )
+        s_basic_list = serialize_args(basic_list)
+        s_basic_dict = serialize_args(basic_dict)
+        s_nested_list = serialize_args(nested_list)
+        s_nested_dict = serialize_args(nested_dict)
+        s_list_of_nested_dicts = serialize_args(list_of_nested_dicts)
 
-        self.assertEquals( s_basic_list, '["[\'a\', \'b\', \'c\']"]' )
-        self.assertEquals( s_basic_dict, '["frozenset([(\'a\', 1), (\'b\', 2), (\'c\', 3)])"]' )
-        self.assertEquals( s_nested_list, '[\'[[0, 1, 2], [3, 4, 5]]\']' )
-        self.assertEquals( s_nested_dict, '[None]' ) # Fix this one!
-        self.assertEquals( s_list_of_nested_dicts, '["[{\'a\': {\'a\': 1, \'b\': 2}, \'b\': {\'c\': 3, \'d\': 4}}]"]' )
+        assert s_basic_list == str(['a', 'b', 'c'])
+        assert s_basic_dict == str(["['1', 'a']", "['2', 'b']", "['3', 'c']"])
+        assert s_nested_list == str(["['0', '1', '2']", "['3', '4', '5']"])
+        assert s_nested_dict == str(['[\'["[\\\'1\\\', \\\'a\\\']", "[\\\'2\\\', \\\'b\\\']"]\', \'a\']', '[\'["[\\\'3\\\', \\\'c\\\']", "[\\\'4\\\', \\\'d\\\']"]\', \'b\']'])
+        assert s_list_of_nested_dicts == str(['[\'[\\\'["[\\\\\\\'1\\\\\\\', \\\\\\\'a\\\\\\\']", "[\\\\\\\'2\\\\\\\', \\\\\\\'b\\\\\\\']"]\\\', \\\'a\\\']\', \'[\\\'["[\\\\\\\'3\\\\\\\', \\\\\\\'c\\\\\\\']", "[\\\\\\\'4\\\\\\\', \\\\\\\'d\\\\\\\']"]\\\', \\\'b\\\']\']'])
+
+    def test_serialize_iterables(self):
+        target_set = set([5, 3, 4, 2, 7, 6, 1, 8, 9, 0])
+        def gen():
+            for i in range(10):
+                yield i
+        target_generator = gen()
+        target_frozenset = frozenset([5, 3, 4, 2, 7, 6, 1, 8, 9, 0])
+
+        s_set = serialize_args(target_set)
+        s_gen = serialize_args(target_generator)
+        s_frozenset = serialize_args(target_frozenset)
+
+        assert s_set == s_gen
+        assert s_gen == s_frozenset
+        assert s_frozenset == str(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'])
+
+
+    def test_serialize_nested_lists(self):
+        a = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+        b = [[7, 8, 9], [4, 5, 6], [1, 2, 3]]
+        c = [[6, 4, 5], [1, 3, 2], [9, 8, 7]]
+
+        s_a = serialize_args(a)
+        s_b = serialize_args(b)
+        s_c = serialize_args(c)
+
+        assert s_a == s_b
+        assert s_b == s_c
+        assert s_c == str(["['1', '2', '3']", "['4', '5', '6']", "['7', '8', '9']"])
+
+    def test_serialize_nested_lists_of_nested_lists(self):
+        a = [[[1, 2, 3], [4, 5, 6]], [7, 8, 9]]
+        b = [[7, 8, 9], [[4, 5, 6], [1, 2, 3]]]
+        c = [[[6, 4, 5], [1, 3, 2]], [9, 8, 7]]
+
+        s_a = serialize_args(a)
+        s_b = serialize_args(b)
+        s_c = serialize_args(c)
+
+        assert s_a == s_b
+        assert s_b == s_c
+        assert s_c == str(['["[\'1\', \'2\', \'3\']", "[\'4\', \'5\', \'6\']"]', "['7', '8', '9']"])
+
+    def test_serialize_dicts(self):
+        a = {'a': 1, 'b': 2, 'c': 3}
+        b = {'c': 3, 'a': 1, 'b': 2}
+        c = {'c': 3, 'b': 2, 'a': 1}
+        d = {'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6, 'g': 7, 'h': 8}
+        e = {'b': 2, 'a': 1, 'h': 8, 'd': 4, 'e': 5, 'f': 6, 'g': 7, 'c': 3}
+        f = {'e': 5, 'a': 1, 'h': 8, 'd': 4, 'b': 2, 'f': 6, 'g': 7, 'c': 3}
+
+        s_a = serialize_args(a)
+        s_b = serialize_args(b)
+        s_c = serialize_args(c)
+        s_d = serialize_args(d)
+        s_e = serialize_args(e)
+        s_f = serialize_args(f)
+
+        assert s_a == s_b
+        assert s_b == s_c
+        assert s_c == str(["['1', 'a']", "['2', 'b']", "['3', 'c']"])
+
+        assert s_d == s_e
+        assert s_e == s_f
+        assert s_f == str(["['1', 'a']", "['2', 'b']", "['3', 'c']", "['4', 'd']", "['5', 'e']", "['6', 'f']", "['7', 'g']", "['8', 'h']"])
+
+    def test_serialize_models(self):
+        a = TestModel('a', 'b')
+        b = [TestModel('a', 'b'), TestModel('b', 'c'), TestModel('c', 'd')]
+        c = {'c': TestModel('a', 'b'), 'b': TestModel('b', 'c'), 'a': TestModel('c', 'd')}
+        d = set([TestModel('a', 'b'), TestModel('b', 'c'), TestModel('c', 'd')])
+
+        s_a = serialize_args(a)
+        s_b = serialize_args(b)
+        s_c = serialize_args(c)
+        s_d = serialize_args(d)
+
+        assert s_a == 'TestModel'
+        assert s_b == str(['TestModel', 'TestModel', 'TestModel'])
+        assert s_c == str(["['TestModel', 'a']", "['TestModel', 'b']", "['TestModel', 'c']"])
+        assert s_d == str(['TestModel', 'TestModel', 'TestModel'])
+
+    def test_serialize_methods(self):
+        a = lambda *args, **kwargs: 'foo'
+        def b():
+            return 'bar'
+        class C:
+            def c(self):
+                return 'biz'
+
+        serialize_args(a) == '<lambda>'
+        serialize_args(b) == 'b'
+        serialize_args(C().c) == 'c'
 
     def test_fetch_call_descriptor(self):
         hash      = hashlib.sha1( "test1" ).hexdigest()
@@ -725,9 +827,42 @@ class  CaliendoTestCase(unittest.TestCase):
 
         self.assertEqual(result, expected)
 
-def lalala():
-    pass
+
+    def test_expected_value_prompt(self):
+        assert expected_value.is_equal_to(2)
+
+    def test_multiple_expected_value_calls(self):
+        assert expected_value.is_equal_to(2)
+        assert expected_value.is_equal_to(3)
+        assert expected_value.is_equal_to(4)
+
+
+    @patch('test.api.services.bar.find')
+    @patch('test.api.services.baz.find')
+    @patch('test.api.services.biz.find')
+    @patch('test.api.services.foo.find')
+    def test_multiple_overlapping_services_a(self):
+        foobarfoobizzes = foobarfoobiz.find(10)
+
+    @patch('test.api.services.bar.find')
+    @patch('test.api.services.baz.find')
+    @patch('test.api.services.biz.find')
+    @patch('test.api.services.foo.find')
+    def test_multiple_overlapping_services_b(self):
+        foobarfoobazzes = foobarfoobaz.find(10)
+        foobarfoobizzes = foobarfoobiz.find(10)
+        foobars = foobar.find(10)
+        foobarfoobazzes = foobarfoobaz.find(10)
+
+    @patch('test.api.services.bar.find')
+    @patch('test.api.services.baz.find')
+    @patch('test.api.services.biz.find')
+    @patch('test.api.services.foo.find')
+    def test_multiple_overlapping_services_c(self):
+        foobizs = foobiz.find(10)
+        foobars = foobar.find(10)
 
 if __name__ == '__main__':
     unittest.main()
+
 

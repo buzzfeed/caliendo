@@ -15,21 +15,6 @@ def should_use_caliendo( ):
     except:
         return False
 
-def get_database_config( ):
-    default = {
-            'ENGINE'  : 'flatfiles',
-            'NAME'    : '',
-            'USER'    : '',
-            'PASSWORD': '',
-            'HOST'    : ''
-    }
-    try:
-        if 'CALIENDO_CONN_STRING' in os.environ:
-            return dict( [ ( param[0], param[1] ) for param in [ p.split( '=' ) for p in os.environ['CALIENDO_CONN_STRING'].split(',') ] ] )
-        if 'DJANGO_SETTINGS_MODULE' in os.environ:
-            settings = __import__( os.environ[ 'DJANGO_SETTINGS_MODULE' ], globals(), locals(), [ 'DATABASES' ], -1 )
-            if settings.DATABASES and settings.DATABASES['default']:
-                return settings.DATABASES[ 'default' ]
-    except:
-        pass
-    return default
+CALIENDO_PROMPT = False
+if os.environ.get('CALIENDO_PROMPT', False) == 'True':
+    CALIENDO_PROMPT = True

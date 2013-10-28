@@ -4,21 +4,17 @@ import sys
 import inspect
 import importlib
 from contextlib import contextmanager
+import caliendo
 from caliendo import util
 from caliendo import config
 from caliendo import call_descriptor
 from caliendo import counter
+from caliendo import prompt
 
-USE_CALIENDO = config.should_use_caliendo( )
-CONFIG       = config.get_database_config( )
+USE_CALIENDO = config.should_use_caliendo()
 
 if USE_CALIENDO:
-    if 'mysql' in CONFIG['ENGINE']:
-        from caliendo.db.mysql import delete_io
-    elif 'flatfiles' in CONFIG['ENGINE']:
-        from caliendo.db.flatfiles import delete_io
-    else:
-        from caliendo.db.sqlite import delete_io
+    from caliendo.db.flatfiles import delete_io
 
 def should_exclude(type_or_instance, exclusion_list):
     """
@@ -38,8 +34,9 @@ def should_exclude(type_or_instance, exclusion_list):
     return False
 
 def get_hash(args, trace_string, kwargs):
+    counter_value = counter.counter.get_from_trace(trace_string)
     return sha1((str(frozenset(util.serialize_args(args))) + "\n" +
-                              str( counter.counter.get_from_trace( trace_string ) ) + "\n" +
+                              str(counter_value) + "\n" +
                               str(frozenset(util.serialize_args(kwargs))) + "\n" +
                               trace_string + "\n" )).hexdigest()
 
@@ -142,6 +139,8 @@ class Wrapper( dict ):
             cd.save()
             if not call_hash:
                 raise Exception("CALL HASH IS NONE")
+
+            util.last_hash = call_hash
             self.last_cached = call_hash
         else:
             returnval = cd.returnval
@@ -349,27 +348,46 @@ def cache( handle=lambda *args, **kwargs: None, args=None, kwargs=None ):
     if not USE_CALIENDO:
         return handle(*args, **kwargs)
 
-    trace_string           = util.get_stack(handle.__name__)
-    call_hash              = get_hash(args, trace_string, kwargs)
+    trace_string      = util.get_stack(handle.__name__)
+    call_hash         = get_hash(args, trace_string, kwargs)
+    cd                = call_descriptor.fetch(call_hash)
+    modify_or_replace = 'no'
 
-    cd                     = call_descriptor.fetch( call_hash )
+    if config.CALIENDO_PROMPT:
+        display_name = ("(test %s): " % caliendo.util.current_test) if caliendo.util.current_test else ''
+        if hasattr(handle, '__module__') and hasattr(handle, '__name__'):
+            display_name += "%s.%s" % (handle.__module__, handle.__name__)
+        else:
+            display_name += handle
 
-    if not cd:
+        if cd:
+            modify_or_replace = prompt.should_modify_or_replace_cached(display_name) 
+
+    if not cd or modify_or_replace == 'replace':
+        returnval = handle(*args, **kwargs)
+    elif cd and modify_or_replace == 'modify':
+        returnval = prompt.modify_cached_value(cd.returnval, 
+                                               calling_method=display_name,
+                                               calling_test='')
+    if not cd or modify_or_replace != 'no':
         cd = call_descriptor.CallDescriptor( hash      = call_hash,
                                              stack     = trace_string,
                                              method    = handle.__name__,
-                                             returnval = handle(*args, **kwargs),
+                                             returnval = returnval,
                                              args      = args,
                                              kwargs    = kwargs )
 
         cd.save()
+
+    util.last_hash = cd.hash
 
     return cd.returnval
 
 def patch(*args, **kwargs):
     """
     Deprecated. Patch should now be imported from caliendo.patch.patch
+
     """
-    from caliendo.patch import patch
-    return patch(*args, **kwargs)
+    from caliendo.patch import patch as p
+    return p(*args, **kwargs)
 

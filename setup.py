@@ -21,7 +21,4 @@ setup(
     install_requires=[
         'mock==1.0.0'
     ],
-    extras_require={
-        'mysql': ['MySQL-python>=1.2.3'],
-    }
 )

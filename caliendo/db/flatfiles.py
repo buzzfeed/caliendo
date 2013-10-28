@@ -6,18 +6,18 @@ from caliendo.logger import get_logger
 
 logger = get_logger(__name__)
 
-CACHE_DIRECTORY = os.path.abspath(__name__).replace( 'caliendo.db.flatfiles', '' ) + 'cache/'
-SEED_DIRECTORY = os.path.abspath(__name__).replace('caliendo.db.flatfiles', '' ) + 'seeds/'
-
-if os.environ.get( 'CALIENDO_CACHE_PREFIX' ):
-    cache_path = os.environ.get( 'CALIENDO_CACHE_PREFIX' )
-    CACHE_DIRECTORY = os.path.join( cache_path, 'cache/' )
-    SEED_DIRECTORY = os.path.join( cache_path, 'seeds/' )
+DEFAULT_ROOT = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', '..')
+ROOT = os.environ.get('CALIENDO_CACHE_PREFIX', None) or DEFAULT_ROOT 
+CACHE_DIRECTORY = os.path.join(ROOT, 'cache')
+SEED_DIRECTORY = os.path.join(ROOT, 'seeds')
+EV_DIRECTORY = os.path.join(ROOT, 'evs')
 
 if not os.path.exists( CACHE_DIRECTORY ):
     os.makedirs(CACHE_DIRECTORY)
 if not os.path.exists( SEED_DIRECTORY ):
     os.makedirs(SEED_DIRECTORY)
+if not os.path.exists(EV_DIRECTORY):
+    os.makedirs(EV_DIRECTORY)
 
 def insert_io( args ):
     """
@@ -29,13 +29,33 @@ def insert_io( args ):
     """
     hash = args['hash']
     packet_num = args['packet_num']
-    filepath = CACHE_DIRECTORY + hash + "_" + str( packet_num )
+    filepath = os.path.join(CACHE_DIRECTORY, "%s_%s" % (hash, packet_num))
     try:
-        f = None
         with open(filepath, "w+") as f:
             pickle.dump(args, f)
     except IOError:
         logger.warning( "Caliendo failed to open " + filepath + ", check file permissions." )
+
+def get_packets(directory):
+    file_list = os.listdir(directory)
+    packets   = {}
+    for filename in file_list:
+        try:
+            hash, packet_num = tuple(filename.split('_'))
+            if hash in packets:
+                packets[hash] += 1
+            else:
+                packets[hash] = 1
+        except:
+            pass
+    return packets
+
+def get_filenames_for_hash(directory, hash):
+    packets = get_packets(directory)
+    if hash not in packets:
+        return []
+    return [os.path.abspath(os.path.join(directory, "%s_%s" % (hash, i)))
+            for i in range(packets[hash])]
 
 def select_io( hash ):
     """
@@ -45,28 +65,45 @@ def select_io( hash ):
 
     :rtype list(tuple( hash, stack, methodname, returnval, args, packet_num )):
     """
+    res = []
     if not hash:
-        return []
-    file_list = os.listdir(CACHE_DIRECTORY)
-    labeled = [ ( filename.split( '_' )[1], filename ) for filename in file_list ]
-    ordered = [ filename[1] for filename in sorted( labeled, cmp=lambda x, y: cmp( int(x), int(y) ), key=lambda x: x[0] ) ]
-    packets = [ os.path.join( CACHE_DIRECTORY, filename ) for filename in ordered ]
-    
-    fi = lambda filename: True if hash in filename else False
-    packets = [ os.path.join( CACHE_DIRECTORY, filename ) for filename in sorted( filter( fi, file_list ) ) ]
-    res = [ ]
-    for packet in packets:
+        return res
+
+    for packet in get_filenames_for_hash(CACHE_DIRECTORY, hash):
         try:
-            f = None
             with open(packet, "rb") as f:
-                d = pickle.load( f )
-                res += [(d['hash'], d['stack'], d['methodname'], d['returnval'], d['args'], d['packet_num'] )]
+                d = pickle.load(f)
+                res += [(d['hash'], d['stack'], d['methodname'], d['returnval'], d['args'], d['packet_num'])]
         except IOError:
             logger.warning( "Caliendo failed to open " + packet + " for reading." )
 
-    if not res:
-        return []
     return res
+
+def select_expected_value(hash):
+    if not hash:
+        return []
+    res = []
+    for packet in get_filenames_for_hash(EV_DIRECTORY, hash):
+        try:
+            with open(packet, "rb") as f:
+                fr = pickle.load(f)
+                res += [(fr['call_hash'], fr['expected_value'], fr['packet_num'])]
+        except IOError:
+            logger.warning("Failed to open %s" % packet)
+    return res
+
+def delete_expected_value(hash):
+    pass
+
+def insert_expected_value(packet):
+    hash = packet['call_hash']
+    packet_num = packet['packet_num']
+    ev = packet['expected_value']
+    try:
+        with open(os.path.join(EV_DIRECTORY, "%s_%s" % (hash, packet_num)), "w+") as f:
+            pickle.dump({'call_hash': hash, 'expected_value': ev, 'packet_num': packet_num}, f)
+    except IOError:
+        logger.warning("Failed to open %s" % hash)
 
 def insert_test( hash, random, seq ):
     """
@@ -78,14 +115,11 @@ def insert_test( hash, random, seq ):
 
     :rtype None:
     """
-
-    filepath = SEED_DIRECTORY + hash
     try:
-        f = None
-        with open(filepath, "w+") as f:
+        with open(os.path.join(SEED_DIRECTORY, hash), "w+") as f:
             pickle.dump({'hash': hash, 'random': random, 'seq': seq }, f)
     except IOError:
-        logger.warning( "Caliendo failed to open " + filepath + ", check file permissions." )
+        logger.warning( "Failed to open %s" % hash)
 
 def select_test( hash ):
     """
@@ -95,7 +129,7 @@ def select_test( hash ):
 
     :rtype [tuple(<string>, <string>)]:
     """
-    filepath = SEED_DIRECTORY + hash
+    filepath = os.path.join(SEED_DIRECTORY, hash)
     try:
         f = None
         res = None
@@ -117,13 +151,8 @@ def delete_io( hash ):
 
     :rtype int: The number of records deleted
     """
-    file_list = os.listdir(CACHE_DIRECTORY)
-    f = lambda filename: True if hash in filename else False
-    labeled = [ ( filename.split( '_' )[1], filename ) for filename in filter( f, file_list ) ]
-    ordered = [ filename[1] for filename in sorted( labeled, cmp=lambda x, y: cmp( int(x), int(y) ), key=lambda x: x[0] ) ]
-    packets = [ os.path.join( CACHE_DIRECTORY, filename ) for filename in ordered ]
     res = 0
-    for packet in packets:
+    for packet in get_filenames_for_hash(CACHE_DIRECTORY, hash):
         try:
             os.remove(packet)
             res = res + 1
