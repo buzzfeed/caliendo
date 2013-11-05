@@ -30,6 +30,7 @@ from api import foobarfoobaz
 from api import foobar
 from api import foobiz
 from api import foobaz
+from test.api.services.bar import find as find_bar
 
 from caliendo.util import recache
 
@@ -861,6 +862,26 @@ class  CaliendoTestCase(unittest.TestCase):
     def test_multiple_overlapping_services_c(self):
         foobizs = foobiz.find(10)
         foobars = foobar.find(10)
+
+    @patch('test.api.services.bar.find', side_effect=Exception("Blam"))
+    def test_side_effect_raises_exceptions(self):
+        try:
+            foobizs = foobiz.find(10)
+            foobars = foobar.find(10)
+        except:
+            assert sys.exc_info()[1].message == 'Blam'
+
+    @patch('test.api.services.bar.find', rvalue='la', side_effect=Exception('Boom'))
+    def test_side_effect_raises_exceptions_with_rvalue(self):
+        try:
+            find_bar(10)
+        except:
+            assert sys.exc_info()[1].message == 'Boom'
+
+    @patch('test.api.services.bar.find', rvalue='la', side_effect=lambda a: a)
+    def test_side_effect_overrides_rvalue(self):
+        rvalue = find_bar(10)
+        assert rvalue == 10, "Expected la, got %s" % rvalue
 
 if __name__ == '__main__':
     unittest.main()
