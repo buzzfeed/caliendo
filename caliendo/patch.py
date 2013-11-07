@@ -7,6 +7,8 @@ from mock import _get_target
 import caliendo
 from caliendo.facade import cache
 
+class UNDEFINED:
+    pass
 
 def find_dependencies(module, depth=0, deps=None, seen=None, max_depth=99):
     """
@@ -78,7 +80,31 @@ def find_modules_importing(dot_path, starting_with):
 
     return filtered
 
-def patch(import_path, rvalue=None):
+def execute_side_effect(side_effect=UNDEFINED, args=UNDEFINED, kwargs=UNDEFINED):
+    """
+    Executes a side effect if one is defined.
+
+    :param side_effect: The side effect to execute
+    :type side_effect: Mixed. If it's an exception it's raised. If it's callable it's called with teh parameters.
+    :param tuple args: The arguments passed to the stubbed out method
+    :param dict kwargs: The kwargs passed to the subbed out method.
+
+    :rtype: mixed
+    :returns: Whatever the passed side_effect returns
+    :raises: Whatever error is defined as the side_effect
+    """
+    if args == UNDEFINED:
+        args = tuple()
+    if kwargs == UNDEFINED:
+        kwargs = {}
+    if isinstance(side_effect, (BaseException, Exception, StandardError)):
+        raise side_effect
+    elif hasattr(side_effect, '__call__'): # If it's callable...
+        return side_effect(*args, **kwargs)
+    else:
+        raise Exception("Caliendo doesn't know what to do with your side effect.")
+
+def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED):
     """
     Patches an attribute of a module referenced on import_path with a decorated 
     version that will use the caliendo cache if rvalue is None. Otherwise it will
@@ -112,12 +138,18 @@ def patch(import_path, rvalue=None):
                 caliendo.util.current_test_handle = unpatched_test
                 caliendo.util.current_test = "%s.%s" % (unpatched_test.__module__, unpatched_test.__name__)
 
-            if rvalue:
-                patch_with = lambda *args, **kwargs: rvalue
+            if rvalue != UNDEFINED:
+                def patch_with(*args, **kwargs):
+                    if side_effect != UNDEFINED:
+                        return execute_side_effect(side_effect, args, kwargs)
+                    return rvalue
             else:
                 getter, attribute = _get_target(import_path)
                 method_to_patch = getattr(getter(), attribute)
-                patch_with = lambda *args, **kwargs: cache(method_to_patch, args=args, kwargs=kwargs)
+                def patch_with(*args, **kwargs):
+                    if side_effect != UNDEFINED:
+                        execute_side_effect(side_effect, args, kwargs)
+                    return cache(method_to_patch, args=args, kwargs=kwargs)
 
             to_patch = find_modules_importing(import_path, caliendo.util.current_test_module)
 
