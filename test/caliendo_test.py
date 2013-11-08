@@ -31,6 +31,7 @@ from api import foobar
 from api import foobiz
 from api import foobaz
 from test.api.services.bar import find as find_bar
+from test.api.myclass import MyClass
 
 from caliendo.util import recache
 
@@ -882,6 +883,12 @@ class  CaliendoTestCase(unittest.TestCase):
     def test_side_effect_overrides_rvalue(self):
         rvalue = find_bar(10)
         assert rvalue == 10, "Expected la, got %s" % rvalue
+
+    @patch('test.api.myclass.MyClass.foo', rvalue='bar')
+    def test_patching_bound_methods(self):
+        mc = MyClass()
+        bar = mc.foo()
+        assert bar == 'bar', "Got '%s' expected 'bar'" % bar
 
 if __name__ == '__main__':
     unittest.main()
