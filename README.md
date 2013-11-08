@@ -23,18 +23,23 @@ pip install ./caliendo
 ```
 
 To run tests you can use the standard unittest module. You'll have various 
-prompts during the process. To run all tests you should use nose with 
---nocapture. nose capturing interferes with the interactive prompts.
+prompts during the process. You can just hit ctrl+d to continue. To run all 
+tests you should use nose with --nocapture. nose capturing interferes with 
+the interactive prompts.
+
+Your tests will need to be written is TestCases of some sort (classes). 
+Caliendo uses the TestCase instance to figure out what module the test came 
+from at runtime by referring to self, which is the first argument to the 
+test methods. 
 
 ```console
-# Tests
 
-python test/caliendo_test.py
+python setup.py test 
+```
 
-# or
+```console
 
 nosetests --all-modules --nocapture test/
-
 ```
 
 # Configuration
@@ -43,11 +48,13 @@ Caliendo requires file read/write permissions for caching objects. The first tim
 you invoke tests calling caliendo:
 
 1. Caliendo writes to the specified cache files. The default location is in the 
-   caliendo build, caliendo/cache, caliendo/evs, and caliendo/seeds. You can change 
-   where caliendo creates these directories by setting the environment variable:
+   caliendo build, caliendo/cache, caliendo/evs, and caliendo/seeds, and 
+   caliendo/used. You can change where caliendo creates these directories and 
+   file by setting the environment variable:
 
 ```console
 export CALIENDO_CACHE_PREFIX=/some/absolute/path
+
 ```
 
 2. If you would like to be prompted to overwrite or modify existing cached values
@@ -55,6 +62,7 @@ export CALIENDO_CACHE_PREFIX=/some/absolute/path
 
 ```console
 export CALIENDO_PROMPT=True
+
 ```
 
 # Examples
@@ -127,6 +135,26 @@ class ApiTest(unittest.TestCase):
 In the above example `bar` is nested in the service layer of the architecture. We can import it once at the head of the test suite and effectively patch it at the test's invocation. 
 
 We set the rvalue to 'biz', but if we left it alone the value 'foo' would have been cached on the initial run. Every subsequent run would not have called the `foo` or `bar` method, and would have simply returned the cached value from the initial invokation of the test. 
+
+## Purge
+
+You can purge unused cache file from the cache by using the purge functionality at `caliendo.db.flatfiles.purge`.
+
+By including a call to purge at the end of a full run of the tests; any unused portion of any part of the cache will be erased.
+
+This is a good way to commit minimal files to your code base.
+
+```python
+
+from caliendo.db.flatfiles import purge
+
+# Run all your tests:
+unittest.main()
+
+# Then purge unused files.
+purge()
+
+```
 
 ## The Facade 
 

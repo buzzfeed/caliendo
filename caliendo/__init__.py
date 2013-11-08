@@ -4,11 +4,11 @@ import time
 
 from caliendo.config import should_use_caliendo
 from caliendo import util
+from caliendo.db import flatfiles as ff
 
-USE_CALIENDO = should_use_caliendo( )
+USE_CALIENDO = should_use_caliendo()
 
 if USE_CALIENDO:
-    # If the supporting db table doesn't exist; create it.
     util.create_tables( )
 
     def seq():    return util.seq()
@@ -27,3 +27,5 @@ else:
 
 def recache():
     util.recache()
+
+
