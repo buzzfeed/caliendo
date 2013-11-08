@@ -58,25 +58,29 @@ def find_modules_importing(dot_path, starting_with):
     :rtype: list of tuples
     :returns: A list of module, name, object representing modules depending on dot_path where module is a reference to the module, name is the name of the object in that module, and object is the imported object in that module.
     """
+    klass = None
+    filtered = []
+
     if '.' not in dot_path:
         module_or_method = __import__(dot_path)
     else:
         getter, attribute = _get_target(dot_path)
         module_or_method = getattr(getter(), attribute)
 
-    if 'rankings' in dot_path:
-        do_print = True
-    else:
-        do_print = False
+    if isinstance(module_or_method, types.UnboundMethodType):
+        klass = getter()
+        module_or_method = klass
 
     deps = find_dependencies(inspect.getmodule(starting_with))
-    filtered = []
 
     for depth, dependencies in deps.items():
         for dependency in dependencies:
             module, name, object = dependency
             if object == module_or_method:
-                filtered.append((module, name, object))
+                if klass:
+                    filtered.append((module, name, (klass, attribute)))
+                else:
+                    filtered.append((module, name, object))
 
     return filtered
 
@@ -155,14 +159,22 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED):
 
             # Patch methods in all modules requiring it
             for module, name, object in to_patch:
-                setattr(module, name, patch_with)
+                if hasattr(object, '__len__') and len(object) == 2: # We're patching an unbound method
+                    klass, attribute = object
+                    setattr(getattr(module, name), attribute, patch_with)
+                else:
+                    setattr(module, name, patch_with)
 
             # Run the test with patched methods.
             unpatched_test(*args, **kwargs)
 
             # Un-patch patched methods
             for module, name, object in to_patch:
-                setattr(module, name, object)
+                if hasattr(object, '__len__') and len(object) == 2: # We're patching an unbound method
+                    klass, attribute = object
+                    setattr(getattr(module, name), attribute, object)
+                else:
+                    setattr(module, name, object)
 
         return patched_test
     return patch_test
