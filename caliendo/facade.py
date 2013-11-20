@@ -3,6 +3,7 @@ import os
 import sys
 import inspect
 import importlib
+import types
 from contextlib import contextmanager
 import caliendo
 from caliendo import util
@@ -370,6 +371,12 @@ def cache( handle=lambda *args, **kwargs: None, args=None, kwargs=None ):
                                                calling_method=display_name,
                                                calling_test='')
     if not cd or modify_or_replace != 'no':
+        if isinstance(handle, types.MethodType):
+            args = list(args)
+            args[0] = util.serialize_item(args[0])
+            args = tuple(args)
+
+
         cd = call_descriptor.CallDescriptor( hash      = call_hash,
                                              stack     = trace_string,
                                              method    = handle.__name__,

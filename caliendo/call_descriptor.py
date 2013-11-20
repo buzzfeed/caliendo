@@ -27,7 +27,7 @@ def fetch( hash ):
         p['returnval']  = p['returnval'] + returnval
         p['args']       = p['args'] + args
         p['stack']      = p['stack'] + stack
-
+                             
       return CallDescriptor( hash = hash,
                              stack = p['stack'],
                              method = p['methodname'],
@@ -42,7 +42,7 @@ class CallDescriptorBuffer:
     try:
         args                   = pickling.pickle_with_weak_refs(args)
     except:
-        args               = "()"
+        args               = pickling.pickle_with_weak_refs(tuple([]))
 
     returnval              = pickling.pickle_with_weak_refs(returnval)
 
