@@ -891,10 +891,115 @@ class  CaliendoTestCase(unittest.TestCase):
         assert rvalue == 10, "Expected la, got %s" % rvalue
 
     @patch('test.api.myclass.MyClass.foo', rvalue='bar')
-    def test_patching_bound_methods(self):
+    def test_patching_instance_methods_with_rvalue(self):
         mc = MyClass()
         bar = mc.foo()
         assert bar == 'bar', "Got '%s' expected 'bar'" % bar
+
+    def test_patching_instance_methods_with_cache_and_binary_garbage(self):
+        def mixed(x, y, z=1):
+            CallOnceEver().update()
+            return x + y + z
+
+        checker = tempfile.NamedTemporaryFile(delete=False)
+        bin_file = tempfile.NamedTemporaryFile()
+        bin_file.write(os.urandom(1024*1024))
+        binary_garbage = bin_file.read()
+
+        @patch('test.api.myclass.MyClass.foo')
+        def test(self, fh, checker):
+            from test.api import myclass
+            c = MyClass()
+            result = c.foo(bar=binary_garbage)
+            c.foo()
+            c.foo()
+            with open(checker.name, 'w+') as fp:
+                fp.write(str(myclass.side_effect))
+            fh.write(str(result == 'foo'))
+            fh.close()
+            os._exit(0)
+
+        outputs = [ tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False) ]
+
+        for output in outputs:
+            pid = os.fork()
+            if pid:
+                os.waitpid(pid, 0)
+            else:
+                test(self, output, checker)
+
+        expected = ['True', 'True', 'True']
+        result   = []
+
+        for output in outputs:
+            output.close()
+
+            fh = open(output.name)
+            result.append(fh.read())
+            fh.close()
+
+            os.remove(output.name)
+
+        with open(checker.name, 'rb') as fp:
+            check = fp.read()
+            assert check == "0", "It was: <%s>\n" % check
+
+        os.unlink(checker.name)
+
+        self.assertEqual(result, expected)
+
+    def test_patching_instance_methods_with_cache(self):
+        def mixed(x, y, z=1):
+            CallOnceEver().update()
+            return x + y + z
+
+        checker = tempfile.NamedTemporaryFile(delete=False)
+
+        @patch('test.api.myclass.MyClass.foo')
+        def test(self, fh, checker):
+            from test.api.myclass import side_effect
+            c = MyClass()
+            result = c.foo()
+            c.foo()
+            c.foo()
+            with open(checker.name, 'w+') as fp:
+                fp.write(str(side_effect))
+            fh.write(str(result == 'foo'))
+            fh.close()
+            os._exit(0)
+
+        outputs = [ tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False),
+                    tempfile.NamedTemporaryFile(delete=False) ]
+
+        for output in outputs:
+            pid = os.fork()
+            if pid:
+                os.waitpid(pid, 0)
+            else:
+                test(self, output, checker)
+
+        expected = ['True', 'True', 'True']
+        result   = []
+
+        for output in outputs:
+            output.close()
+
+            fh = open(output.name)
+            result.append(fh.read())
+            fh.close()
+
+            os.remove(output.name)
+
+        with open(checker.name, 'rb') as fp:
+            check = fp.read()
+            assert check == "0", "It was: <%s>\n" % check
+
+        os.unlink(checker.name)
+
+        self.assertEqual(result, expected)
 
     @patch('test.api.services.bar.find')
     @patch('test.api.services.baz.find')
