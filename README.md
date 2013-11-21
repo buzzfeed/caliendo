@@ -136,6 +136,101 @@ In the above example `bar` is nested in the service layer of the architecture. W
 
 We set the rvalue to 'biz', but if we left it alone the value 'foo' would have been cached on the initial run. Every subsequent run would not have called the `foo` or `bar` method, and would have simply returned the cached value from the initial invokation of the test. 
 
+## Expected Values
+
+There are a bunch of idiomatic methods for testing that expected values match observed values. At the root of this functionality is the `cache`.
+
+#### The basic behavior of these methods is all the same.
+
+  1. The observed value is passed for the first time.
+  2. Caliendo will give the user an interactive shell to check the expected value (stored in the variable `ev`)
+  3. The user can modify the expected value by modifying `ev` in the shell. 
+  4. When the user quits with `ctrl+d` the expected value, `ev`, will be cached by `cache`. 
+  5. On this run the check is trivial. If the expected value stored is valid for `cache`ing (e.g. vaguely `pickle`able) the test will pass.
+  6. When the `expected_value` method is invoked again in the same test/call the `cache`d value will be used for comparison to the new observed value.
+
+#### The available methods are:
+
+##### `expected_value.is_true_under(validator, observed_value)`
+
+This is the most complicated method. As the first argument it takes a validator used to validate the observed value against the expected value.
+
+The validator should take the expected value as the first argument and the observed value as the second. The return value doesn't really matter. The output of `expected_value.is_true_under()` is whatever your return value is.
+
+```python
+def validator(expected_value, observed_value):
+    # Do a bunch of assertions here
+    return anything
+
+```
+
+##### `expected_value.is_equal_to(observed_value)`
+
+Just compares the observed value to the cached value. 
+
+##### `expected_value.is_greater_than(observed_value)`
+
+Tests that the expected value is greater than the observed value.
+
+##### `expected_value.is_less_than(observed_value)`
+
+Tests that the expected value is less than the observed value.
+
+##### `expected_value.contains(observed_value, el)`
+
+Sorry, this one isn't so idiomatic. Tests that the observed value contains `el`
+
+##### `expected_value.does_not_contain(observed_value, el)`
+
+Sorry, this one isn't so idiomatic either. Tests that the observed value does not contain `el`
+
+## Side effects.
+
+Side effects can be run by patched methods. 
+
+If you pass an Exception that inherits from `BaseException`, `Exception`, or `StandardError` your exception will be raised.
+
+```python
+
+import unittest
+from caliendo.patch import patch
+from api.bazs import baz
+import sys
+
+class ApiTest(unittest.TestCase):
+
+  @patch('api.services.bars.bar', side_effect=Exception("Things went foobar!"))
+  def test_baz(self):
+    with self.assertRaisesRegexp(Exception, r"Things went foobar!"): 
+        baz() 
+
+```
+
+If you pass a callable as the side effect it will be called and the result returned. The arguments and keyword arguments to the method being patched will be passed.
+
+```python
+
+import unittest
+from caliendo.patch import patch
+from api.bazs import baz
+import sys
+
+counter = 0
+def example_side_effect(*args, **kwargs):
+    global counter
+    counter += 1
+    return 'foo'
+
+class ApiTest(unittest.TestCase):
+
+  @patch('api.services.bars.bar', side_effect=example_side_effect)
+  def test_baz(self):
+    assert baz() == 'foo' 
+    assert counter == 1
+
+```
+
+
 ## Purge
 
 You can purge unused cache file from the cache by using the purge functionality at `caliendo.db.flatfiles.purge`.
