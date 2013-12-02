@@ -69,7 +69,7 @@ export CALIENDO_PROMPT=True
 
 There are a lot of ways to set environment variables in your application. On our team we've come up with a few 'best practices' that work really well for us.
 
-1. When using `nosetests` set the variables in the __init__.py file for your integration testing suite.
+1. When using `nosetests` set the variables in the `__init__.py` file for your integration testing suite.
 
 ```python
 import os
@@ -79,9 +79,9 @@ os.environ['PURGE_CALIENDO'] = 'True'
 
 ```
 
-2. When using `unittest` with setup.py (invoked like `python setup.py test`) set the variables as above in either setup.py or the __init__.py file for your integration test folder.
+2. When using `unittest` with setup.py (invoked like `python setup.py test`) set the variables as above in either setup.py or the `__init__.py` file for your integration test folder.
 
-3. When using `fabric` to run tests using either of these methods include the above in your fabfile/__init__.py file.
+3. When using `fabric` to run tests using either of these methods include the above in your `fabfile/__init__.py` file.
 
 # Examples
 
