@@ -71,13 +71,13 @@ There are a lot of ways to set environment variables in your application. On our
 
 1. When using `nosetests` set the variables in the `__init__.py` file for your integration testing suite.
 
-```python
-import os
-import sys
-os.environ['CALIENDO_CACHE_PREFIX'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'caliendo') 
-os.environ['PURGE_CALIENDO'] = 'True'
+    ```python
+    import os
+    import sys
+    os.environ['CALIENDO_CACHE_PREFIX'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'caliendo') 
+    os.environ['PURGE_CALIENDO'] = 'True'
 
-```
+    ```
 
 2. When using `unittest` with setup.py (invoked like `python setup.py test`) set the variables as above in either setup.py or the `__init__.py` file for your integration test folder.
 
