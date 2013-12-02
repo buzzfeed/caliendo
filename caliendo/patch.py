@@ -165,16 +165,17 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED):
                 else:
                     setattr(module, name, patch_with)
 
-            # Run the test with patched methods.
-            unpatched_test(*args, **kwargs)
-
-            # Un-patch patched methods
-            for module, name, object in to_patch:
-                if hasattr(object, '__len__') and len(object) == 2: # We're patching an unbound method
-                    klass, attribute = object
-                    setattr(getattr(module, name), attribute, object)
-                else:
-                    setattr(module, name, object)
+            try:
+                # Run the test with patched methods.
+                unpatched_test(*args, **kwargs)
+            finally:
+                # Un-patch patched methods
+                for module, name, object in to_patch:
+                    if hasattr(object, '__len__') and len(object) == 2: # We're patching an unbound method
+                        klass, attribute = object
+                        setattr(getattr(module, name), attribute, getattr(klass, attribute))
+                    else:
+                        setattr(module, name, object)
 
         return patched_test
     return patch_test
