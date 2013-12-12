@@ -56,7 +56,8 @@ def insert_io( args ):
         with open(filepath, "w+") as f:
             pickle.dump(args, f)
     except IOError:
-        logger.warning( "Caliendo failed to open " + filepath + ", check file permissions." )
+        if not os.environ.get('CALIENDO_TEST_SUITE', None):
+            logger.warning( "Caliendo failed to open " + filepath + ", check file permissions." )
 
 def get_packets(directory):
     file_list = os.listdir(directory)
@@ -105,7 +106,8 @@ def select_io( hash ):
                 d = pickle.load(f)
                 res += [(d['hash'], d['stack'], d['methodname'], d['returnval'], d['args'], d['packet_num'])]
         except IOError:
-            logger.warning( "Caliendo failed to open " + packet + " for reading." )
+            if not os.environ.get('CALIENDO_TEST_SUITE', None):
+                logger.warning( "Caliendo failed to open " + packet + " for reading." )
 
     return res
 
@@ -120,7 +122,8 @@ def select_expected_value(hash):
                 fr = pickle.load(f)
                 res += [(fr['call_hash'], fr['expected_value'], fr['packet_num'])]
         except IOError:
-            logger.warning("Failed to open %s" % packet)
+            if not os.environ.get('CALIENDO_TEST_SUITE', None):
+                logger.warning("Failed to open %s" % packet)
     return res
 
 def delete_expected_value(hash):
@@ -140,7 +143,8 @@ def insert_expected_value(packet):
                          'packet_num': packet_num}, 
                          f)
     except IOError:
-        logger.warning("Failed to open %s" % hash)
+        if not os.environ.get('CALIENDO_TEST_SUITE', None):
+            logger.warning("Failed to open %s" % hash)
 
 def insert_test( hash, random, seq ):
     """
@@ -157,7 +161,8 @@ def insert_test( hash, random, seq ):
             record_used('seeds', hash)
             pickle.dump({'hash': hash, 'random': random, 'seq': seq }, f)
     except IOError:
-        logger.warning( "Failed to open %s" % hash)
+        if not os.environ.get('CALIENDO_TEST_SUITE', None):
+            logger.warning( "Failed to open %s" % hash)
 
 def select_test( hash ):
     """
@@ -176,7 +181,8 @@ def select_test( hash ):
             d = pickle.load(f)
             res = ( d['random'], d['seq'] )
     except IOError:
-        logger.warning( "Caliendo failed to read " + filepath )
+        if not os.environ.get('CALIENDO_TEST_SUITE', None):
+            logger.warning( "Caliendo failed to read " + filepath )
 
     if res:
         return [res]
@@ -197,7 +203,8 @@ def delete_io( hash ):
             os.remove(packet)
             res = res + 1
         except:
-            logger.warning( "Failed to remove file: " + packet )
+            if not os.environ.get('CALIENDO_TEST_SUITE', None):
+                logger.warning( "Failed to remove file: " + packet )
     return res
 
 def get_unique_hashes():
