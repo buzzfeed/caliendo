@@ -22,19 +22,19 @@ parent directory and run:
 pip install ./caliendo
 ```
 
-To run tests you can use the standard unittest module. You'll have various 
-prompts during the process. You can just hit ctrl+d to continue. To run all 
-tests you should use nose with --nocapture. nose capturing interferes with 
+To run tests you can use the standard unittest module. You'll have various
+prompts during the process. You can just hit ctrl+d to continue. To run all
+tests you should use nose with --nocapture. nose capturing interferes with
 the interactive prompts.
 
-Your tests will need to be written is TestCases of some sort (classes). 
-Caliendo uses the TestCase instance to figure out what module the test came 
-from at runtime by referring to self, which is the first argument to the 
-test methods. 
+Your tests will need to be written is TestCases of some sort (classes).
+Caliendo uses the TestCase instance to figure out what module the test came
+from at runtime by referring to self, which is the first argument to the
+test methods.
 
 ```console
 
-python setup.py test 
+python setup.py test
 ```
 
 ```console
@@ -47,9 +47,9 @@ nosetests --all-modules --nocapture test/
 Caliendo requires file read/write permissions for caching objects. The first time
 you invoke tests calling caliendo:
 
-1. Caliendo writes to the specified cache files. The default location is in the 
-   caliendo build, caliendo/cache, caliendo/evs, and caliendo/seeds, and 
-   caliendo/used. You can change where caliendo creates these directories and 
+1. Caliendo writes to the specified cache files. The default location is in the
+   caliendo build, caliendo/cache, caliendo/evs, and caliendo/seeds, and
+   caliendo/used. You can change where caliendo creates these directories and
    file by setting the environment variable:
 
 ```console
@@ -74,7 +74,7 @@ There are a lot of ways to set environment variables in your application. On our
     ```python
     import os
     import sys
-    os.environ['CALIENDO_CACHE_PREFIX'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'caliendo') 
+    os.environ['CALIENDO_CACHE_PREFIX'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'caliendo')
     os.environ['PURGE_CALIENDO'] = 'True'
 
     ```
@@ -90,10 +90,10 @@ Here are a few basic examples of use.
 ## The cache.
 
 Caliendo offers a cache which decorates callables. If you pass the cache the handle for the callable, and the args/kwargs; it will be 'cached'. The behavior is a little complex. Explained below:
-  *When the method is called the first time a counter is issued that is keyed on a hash of the stack trace and a serialization of the function parameters. 
-  *If/When a matching hash is generated (e.g. a method is called with the same parameters by the same calling method the counter is incremented. 
-  *With each unique counter the result of the function call is pickled and stored matching a CallDescriptor. If a return value can't be pickled caliendo will attempt to munge it. If caliendo fails to munge it an error will be thrown. 
-  *When a method is called that matches an existing counter; the stored CallDescriptor rebuilds the original call and the original return value is returned by the cache. 
+  *When the method is called the first time a counter is issued that is keyed on a hash of the stack trace and a serialization of the function parameters.
+  *If/When a matching hash is generated (e.g. a method is called with the same parameters by the same calling method the counter is incremented.
+  *With each unique counter the result of the function call is pickled and stored matching a CallDescriptor. If a return value can't be pickled caliendo will attempt to munge it. If caliendo fails to munge it an error will be thrown.
+  *When a method is called that matches an existing counter; the stored CallDescriptor rebuilds the original call and the original return value is returned by the cache.
 
 ```python
 from caliendo.facade import cache
@@ -113,7 +113,7 @@ print side_effect
 
 When the above example is run the first time; it will print 2. For every subsequent time it is run it will print 0 unless caliendo's cache is cleared.
 
-## Service patching. 
+## Service patching.
 
 An interface inspired greatly by python Mock is `patch()`.
 
@@ -150,9 +150,9 @@ class ApiTest(unittest.TestCase):
     assert baz() == 'biz'
 ```
 
-In the above example `bar` is nested in the service layer of the architecture. We can import it once at the head of the test suite and effectively patch it at the test's invocation. 
+In the above example `bar` is nested in the service layer of the architecture. We can import it once at the head of the test suite and effectively patch it at the test's invocation.
 
-We set the rvalue to 'biz', but if we left it alone the value 'foo' would have been cached on the initial run. Every subsequent run would not have called the `foo` or `bar` method, and would have simply returned the cached value from the initial invokation of the test. 
+We set the rvalue to 'biz', but if we left it alone the value 'foo' would have been cached on the initial run. Every subsequent run would not have called the `foo` or `bar` method, and would have simply returned the cached value from the initial invokation of the test.
 
 ## Expected Values
 
@@ -162,8 +162,8 @@ There are a bunch of idiomatic methods for testing that expected values match ob
 
   1. The observed value is passed for the first time.
   2. Caliendo will give the user an interactive shell to check the expected value (stored in the variable `ev`)
-  3. The user can modify the expected value by modifying `ev` in the shell. 
-  4. When the user quits with `ctrl+d` the expected value, `ev`, will be cached by `cache`. 
+  3. The user can modify the expected value by modifying `ev` in the shell.
+  4. When the user quits with `ctrl+d` the expected value, `ev`, will be cached by `cache`.
   5. On this run the check is trivial. If the expected value stored is valid for `cache`ing (e.g. vaguely `pickle`able) the test will pass.
   6. When the `expected_value` method is invoked again in the same test/call the `cache`d value will be used for comparison to the new observed value.
 
@@ -184,7 +184,7 @@ def validator(expected_value, observed_value):
 
 ##### `expected_value.is_equal_to(observed_value)`
 
-Just compares the observed value to the cached value. 
+Just compares the observed value to the cached value.
 
 ##### `expected_value.is_greater_than(observed_value)`
 
@@ -204,7 +204,7 @@ Sorry, this one isn't so idiomatic either. Tests that the observed value does no
 
 ## Side effects.
 
-Side effects can be run by patched methods. 
+Side effects can be run by patched methods.
 
 If you pass an Exception that inherits from `BaseException`, `Exception`, or `StandardError` your exception will be raised.
 
@@ -219,8 +219,8 @@ class ApiTest(unittest.TestCase):
 
   @patch('api.services.bars.bar', side_effect=Exception("Things went foobar!"))
   def test_baz(self):
-    with self.assertRaisesRegexp(Exception, r"Things went foobar!"): 
-        baz() 
+    with self.assertRaisesRegexp(Exception, r"Things went foobar!"):
+        baz()
 
 ```
 
@@ -243,7 +243,7 @@ class ApiTest(unittest.TestCase):
 
   @patch('api.services.bars.bar', side_effect=example_side_effect)
   def test_baz(self):
-    assert baz() == 'foo' 
+    assert baz() == 'foo'
     assert counter == 1
 
 ```
@@ -269,9 +269,9 @@ purge()
 
 ```
 
-## The Facade 
+## The Facade
 
-This is the buggiest feature of `caliendo`. 
+This is the buggiest feature of `caliendo`.
 
 If you have an api you want to run under Caliendo you can invoke it like so:
 
@@ -286,10 +286,10 @@ As of revision v0.0.19 caliendo supports chaining so you can invoke it like:
 
 ```python
 caliendo_api = Facade(some_api)
-baz = caliendo_api.get_foo().get_bar().get_baz() 
+baz = caliendo_api.get_foo().get_bar().get_baz()
 ```
 
-If type(baz) is not in ( float, long, str, int, dict, list, unicode ) it will be automatically wrapped by caliendo. 
+If type(baz) is not in ( float, long, str, int, dict, list, unicode ) it will be automatically wrapped by caliendo.
 
 ## Type Checking
 
@@ -304,7 +304,7 @@ facaded_api = Facade(SOMEAPI())
 facaded_api.wrapper__ignore( somemodule.SomeClassDefinition )
 ```
 
-The above example will ensure objects with `__class__` `somemodule.SomeClassDefinition` will never be wrapped. 
+The above example will ensure objects with `__class__` `somemodule.SomeClassDefinition` will never be wrapped.
 
 To stop ignoring a particular class you can do:
 
