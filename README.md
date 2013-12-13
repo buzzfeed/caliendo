@@ -1,4 +1,6 @@
-# About
+# Caliendo
+
+## About
 
 Caliendo is a very simple interface for mocking APIs. It allows you to skip
 (potentially heavy) calls to your database or remote resources by storing sets
@@ -6,7 +8,7 @@ of calls and caching responses based on the sequence of execution as well as
 function arguments. In some cases this improves unit test performance by
 several orders of magnitude.
 
-# Installation
+## Installation
 
 Caliendo is set up to install with `pip`. You can install it directly from
 GitHub by running:
@@ -42,7 +44,7 @@ python setup.py test
 nosetests --all-modules --nocapture test/
 ```
 
-# Configuration
+## Configuration
 
 Caliendo requires file read/write permissions for caching objects. The first time
 you invoke tests calling caliendo:
@@ -65,7 +67,7 @@ export CALIENDO_PROMPT=True
 
 ```
 
-## Best Configuration Practices
+### Configuration Best Practices
 
 There are a lot of ways to set environment variables in your application. On our team we've come up with a few 'best practices' that work really well for us.
 
@@ -83,17 +85,18 @@ There are a lot of ways to set environment variables in your application. On our
 
 3. When using `fabric` to run tests using either of these methods include the above in your `fabfile/__init__.py` file.
 
-# Examples
+## Examples
 
 Here are a few basic examples of use.
 
-## The cache.
+### The Cache
 
 Caliendo offers a cache which decorates callables. If you pass the cache the handle for the callable, and the args/kwargs; it will be 'cached'. The behavior is a little complex. Explained below:
-  *When the method is called the first time a counter is issued that is keyed on a hash of the stack trace and a serialization of the function parameters.
-  *If/When a matching hash is generated (e.g. a method is called with the same parameters by the same calling method the counter is incremented.
-  *With each unique counter the result of the function call is pickled and stored matching a CallDescriptor. If a return value can't be pickled caliendo will attempt to munge it. If caliendo fails to munge it an error will be thrown.
-  *When a method is called that matches an existing counter; the stored CallDescriptor rebuilds the original call and the original return value is returned by the cache.
+
+  * When the method is called the first time a counter is issued that is keyed on a hash of the stack trace and a serialization of the function parameters.
+  * If/When a matching hash is generated (e.g. a method is called with the same parameters by the same calling method the counter is incremented.
+  * With each unique counter the result of the function call is pickled and stored matching a CallDescriptor. If a return value can't be pickled caliendo will attempt to munge it. If caliendo fails to munge it an error will be thrown.
+  * When a method is called that matches an existing counter; the stored CallDescriptor rebuilds the original call and the original return value is returned by the cache.
 
 ```python
 from caliendo.facade import cache
@@ -113,7 +116,7 @@ print side_effect
 
 When the above example is run the first time; it will print 2. For every subsequent time it is run it will print 0 unless caliendo's cache is cleared.
 
-## Service patching.
+### Service Patching
 
 An interface inspired greatly by python Mock is `patch()`.
 
@@ -154,11 +157,11 @@ In the above example `bar` is nested in the service layer of the architecture. W
 
 We set the rvalue to 'biz', but if we left it alone the value 'foo' would have been cached on the initial run. Every subsequent run would not have called the `foo` or `bar` method, and would have simply returned the cached value from the initial invokation of the test.
 
-## Expected Values
+### Expected Values
 
 There are a bunch of idiomatic methods for testing that expected values match observed values. At the root of this functionality is the `cache`.
 
-#### The basic behavior of these methods is all the same.
+#### The basic behavior of these methods is all the same:
 
   1. The observed value is passed for the first time.
   2. Caliendo will give the user an interactive shell to check the expected value (stored in the variable `ev`)
@@ -202,7 +205,7 @@ Sorry, this one isn't so idiomatic. Tests that the observed value contains `el`
 
 Sorry, this one isn't so idiomatic either. Tests that the observed value does not contain `el`
 
-## Side effects.
+### Side Effects
 
 Side effects can be run by patched methods.
 
@@ -249,7 +252,7 @@ class ApiTest(unittest.TestCase):
 ```
 
 
-## Purge
+### Purge
 
 You can purge unused cache file from the cache by using the purge functionality at `caliendo.db.flatfiles.purge`.
 
@@ -269,7 +272,7 @@ purge()
 
 ```
 
-## The Facade
+### The Facade
 
 This is the buggiest feature of `caliendo`.
 
@@ -280,7 +283,7 @@ some_api     = SomeAPI()
 caliendo_api = Facade( some_api ) # Note: caliendo is invoked with the INSTANCE, not the CLASS
 ```
 
-## Chaining
+### Chaining
 
 As of revision v0.0.19 caliendo supports chaining so you can invoke it like:
 
@@ -291,7 +294,7 @@ baz = caliendo_api.get_foo().get_bar().get_baz()
 
 If type(baz) is not in ( float, long, str, int, dict, list, unicode ) it will be automatically wrapped by caliendo.
 
-## Type Checking
+### Type Checking
 
 Some APIs check the types or __class__ of the variables being passed in. A caliendo facade will have a class, `caliendo.facade.Wrapper`.
 
@@ -314,12 +317,12 @@ facaded_api.wrapper__ignore( somemodule.SomeClassDefinition )
 facaded_api.wrapper__unignore( somemodule.SomeClassDefinition )
 ```
 
-# Execution
+## Execution
 
 Once you have an instance of an API running under a `Facade` you should be able
 to call all the methods normally.
 
-# Troubleshooting
+## Troubleshooting
 
 1. If you start getting unexpected API results you should clear the cache by
    simply deleting all the rows in the `test_io` table.
