@@ -17,6 +17,12 @@ GitHub by running:
 pip install git+git://github.com/buzzfeed/caliendo.git#egg=caliendo
 ```
 
+Or from pypi using the standard (to get the latest release version).
+
+```console
+pip install caliendo
+```
+
 Alternatively if you have a copy of the source on your machine; cd to the
 parent directory and run:
 
