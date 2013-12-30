@@ -20,7 +20,7 @@ def get_or_store(observed_value):
 
 
     trace_string = util.get_stack(caller)
-    counter_value = counter.counter.get_from_trace(trace_string)
+    counter_value = counter.get_from_trace(trace_string)
     call_hash = sha1("%s.%s" % (trace_string, 
                                 counter_value)).hexdigest()
 

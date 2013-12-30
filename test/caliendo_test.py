@@ -14,10 +14,13 @@ from subprocess import PIPE
 
 from caliendo.call_descriptor import CallDescriptor
 from caliendo.call_descriptor import fetch
+from caliendo import counter
 from caliendo.facade import patch
 from caliendo.facade import Facade
 from caliendo.facade import Wrapper
+from caliendo.facade import get_hash
 from caliendo.facade import cache
+from caliendo import Ignore
 from caliendo.util import is_primitive
 from caliendo.util import recache
 from caliendo.util import serialize_args
@@ -992,6 +995,32 @@ class  CaliendoTestCase(unittest.TestCase):
         p = subprocess.Popen(" ".join([sys.executable, shell_tests]), stdout=PIPE, stdin=PIPE, stderr=PIPE, shell=True)
         comm = p.communicate()
         assert comm[0] == '>>> >>> >>> >>> >>> >>> >>> >>> >>> >>> >>> >>> ', "START:" + comm[0] + ":END"
+
+    @patch('caliendo.counter.get_from_trace', rvalue=1)
+    def test_args_are_ignored(self):
+        args = (1, 2, 3, 4)
+        kwargs = {'a': 1, 'b': 2}
+        trace_string = ""
+        i_args = [0, 1]
+        i_kwargs = ['b']
+        a = get_hash(args, trace_string, kwargs, ignore=Ignore(i_args, i_kwargs))
+        args = (2, 3, 3, 4)
+        b = get_hash(args, trace_string, kwargs, ignore=Ignore(i_args, i_kwargs))
+        args = ('elf', 'deer', 3, 4)
+        kwargs = {'a': 1, 'b': 6}
+        c = get_hash(args, trace_string, kwargs, ignore=Ignore(i_args, i_kwargs))
+        args = (2, 2, 2, 2)
+        d = get_hash(args, trace_string, kwargs, ignore=Ignore(i_args, i_kwargs))
+        args = (1, 2, 3, 4)
+        kwargs = {'a': 5, 'b': 2}
+        e = get_hash(args, trace_string, kwargs, ignore=Ignore(i_args, i_kwargs))
+        assert a == b
+        assert b == c
+        assert c != d
+        assert e != d
+
+
+
 
 if __name__ == '__main__':
     unittest.main()

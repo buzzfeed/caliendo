@@ -257,6 +257,26 @@ class ApiTest(unittest.TestCase):
 
 ```
 
+### Ignore Dynamic Arguments to Patched Functions
+
+In the event you must pass a dynamic argument to a patched method you can use the `Ignore` class to specify which paramters should be ignored.
+
+```python
+
+from caliendo import Ignore
+from random import random
+from datetime import datetime
+
+dynamic_arguments = Ignore(args=[0,1], kwargs=['current_time'])
+
+class ApiTest(unittest.TestCase):
+
+    @patch('api.services.bars.bar', ignore=dynamic_arguments)
+    def test_baz(self):
+        assert baz(random(), random(), 'a', mykwarg='b', current_time=datetime.now()) == 'foo'
+```
+
+The above test will always pass, even though positional args 0 and 1 change, as well as the current_time keyword argument.
 
 ### Purge
 

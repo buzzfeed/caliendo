@@ -6,9 +6,7 @@ from mock import _get_target
 
 import caliendo
 from caliendo.facade import cache
-
-class UNDEFINED:
-    pass
+from caliendo import UNDEFINED
 
 def find_dependencies(module, depth=0, deps=None, seen=None, max_depth=99):
     """
@@ -108,7 +106,7 @@ def execute_side_effect(side_effect=UNDEFINED, args=UNDEFINED, kwargs=UNDEFINED)
     else:
         raise Exception("Caliendo doesn't know what to do with your side effect.")
 
-def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED):
+def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED):
     """
     Patches an attribute of a module referenced on import_path with a decorated 
     version that will use the caliendo cache if rvalue is None. Otherwise it will
@@ -120,6 +118,7 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED):
     
     :param str import_path: The import path of the method to patch.
     :param mixed rvalue: The return value of the patched method.
+    :param tuple(list(int), list(str)) ignore: A tuple of arguments to ignore. The first element should be a list of positional arguments. The second should be a list of keys for keyword arguments.
     """
     def patch_test(unpatched_test):
         """
@@ -153,7 +152,7 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED):
                 def patch_with(*args, **kwargs):
                     if side_effect != UNDEFINED:
                         execute_side_effect(side_effect, args, kwargs)
-                    return cache(method_to_patch, args=args, kwargs=kwargs)
+                    return cache(method_to_patch, args=args, kwargs=kwargs, ignore=ignore)
 
             to_patch = find_modules_importing(import_path, caliendo.util.current_test_module)
 
