@@ -7,7 +7,7 @@ import datetime
 from collections import Iterable
 
 from caliendo import config
-from caliendo.counter import counter
+from caliendo import counter
 from caliendo import call_descriptor
 
 global test_suite

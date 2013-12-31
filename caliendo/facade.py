@@ -1,4 +1,5 @@
 from hashlib import sha1
+
 import os
 import sys
 import inspect
@@ -11,6 +12,7 @@ from caliendo import config
 from caliendo import call_descriptor
 from caliendo import counter
 from caliendo import prompt
+from caliendo import UNDEFINED
 
 USE_CALIENDO = config.should_use_caliendo()
 
@@ -34,8 +36,17 @@ def should_exclude(type_or_instance, exclusion_list):
 
     return False
 
-def get_hash(args, trace_string, kwargs):
-    counter_value = counter.counter.get_from_trace(trace_string)
+def get_hash(args, trace_string, kwargs, ignore=UNDEFINED):
+    counter_value = counter.get_from_trace(trace_string)
+
+    if ignore != UNDEFINED:
+        args = list(args)
+        for i in ignore.args:
+            args[i] = None
+        for k in ignore.kwargs:
+            kwargs[k] = None
+        args = tuple(args)
+
     return sha1((str(frozenset(util.serialize_args(args))) + "\n" +
                               str(counter_value) + "\n" +
                               str(frozenset(util.serialize_args(kwargs))) + "\n" +
@@ -337,20 +348,28 @@ def Facade( some_instance=None, exclusion_list=[], cls=None, args=tuple(), kwarg
             return some_instance
         return Wrapper(o=some_instance, exclusion_list=list(exclusion_list), cls=cls, args=args, kwargs=kwargs )
 
-def cache( handle=lambda *args, **kwargs: None, args=None, kwargs=None ):
+
+
+def cache( handle=lambda *args, **kwargs: None, args=UNDEFINED, kwargs=UNDEFINED, ignore=UNDEFINED):
     """
     Store a call descriptor
 
+    :param lambda handle: Any callable will work here. The method to cache.
+    :param tuple args: The arguments to the method.
+    :param dict kwargs: The keyword arguments to the method.
+    :param tuple(list(int), list(str)) ignore: A tuple of arguments to ignore. The first element should be a list of positional arguments. The second should be a list of keys for keyword arguments.
+
+    :returns: The value of handle(*args, **kwargs)
     """
-    if not args:
+    if args == UNDEFINED:
         args = tuple()
-    if not kwargs:
+    if kwargs == UNDEFINED:
         kwargs = {}
     if not USE_CALIENDO:
         return handle(*args, **kwargs)
 
     trace_string      = util.get_stack(handle.__name__)
-    call_hash         = get_hash(args, trace_string, kwargs)
+    call_hash         = get_hash(args, trace_string, kwargs, ignore)
     cd                = call_descriptor.fetch(call_hash)
     modify_or_replace = 'no'
 
@@ -397,4 +416,5 @@ def patch(*args, **kwargs):
     """
     from caliendo.patch import patch as p
     return p(*args, **kwargs)
+
 

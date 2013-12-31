@@ -18,7 +18,7 @@ from caliendo.db.flatfiles import purge
 from caliendo.facade import patch
 
 from caliendo import expected_value
-      
+
 from api.services.foo import find as find_foo
 from api.services.biz import find as find_biz
 from api.services.baz import find as find_baz

@@ -25,7 +25,20 @@ else:
     def random(*args):
         return random_r.random()
 
-def recache():
-    util.recache()
+def recache(*args, **kwargs):
+    return util.recache(*args, **kwargs)
+
+class UNDEFINED(object):
+    pass
+
+class Ignore(object):
+
+    def __init__(self, args=UNDEFINED, kwargs=UNDEFINED):
+        self.args = ()
+        self.kwargs = {}
+        if args != UNDEFINED:
+            self.args = args
+        if kwargs != UNDEFINED:
+            self.kwargs = kwargs
 
 
