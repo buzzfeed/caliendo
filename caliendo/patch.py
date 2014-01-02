@@ -133,11 +133,9 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED
         :rtype: instance method
         """
         def patched_test(*args, **kwargs):
-            self = args[0] 
+            caliendo.util.current_test_module = inspect.getmodule(unpatched_test)
 
-            caliendo.util.current_test_module = inspect.getmodule(self)
-
-            if 'patch' not in unpatched_test.__name__: 
+            if 'patch' not in unpatched_test.__name__:
                 caliendo.util.current_test_handle = unpatched_test
                 caliendo.util.current_test = "%s.%s" % (unpatched_test.__module__, unpatched_test.__name__)
 
