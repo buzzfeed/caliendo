@@ -300,8 +300,6 @@ purge()
 
 ### The Facade
 
-This is the buggiest feature of `caliendo`.
-
 If you have an api you want to run under Caliendo you can invoke it like so:
 
 ```python
@@ -347,6 +345,28 @@ facaded_api.wrapper__unignore( somemodule.SomeClassDefinition )
 
 Once you have an instance of an API running under a `Facade` you should be able
 to call all the methods normally.
+
+### Hooks and Stacks (advanced)
+
+When the cache is called the first time you can specify a hook that gets called each subsequent time a call matching that CallDescriptor is made. After a new `CallDescriptor` is added to the `CallStack` for the current `patch` the method  you specified will be called, and passed the most recent CallDescriptor as it's argument.
+
+The callback has to be pickleable. For example:
+
+```python
+import unittest
+from caliendo.patch import patch
+
+def callback(most_recent_call_descriptor):
+    print "The last return value was: '%s'\n" % most_recent_call_descriptor.returnval
+
+class ApiTest(unittest.TestCase):
+    @patch('api.services.bars.bar', callback=callback)
+    def test_baz(self):
+        assert baz() == 'baz'
+
+```
+
+The above example will print "The last return value was: 'baz'" followed by a newline to stdout.
 
 ## Troubleshooting
 

@@ -1,6 +1,7 @@
 import os
 import sys
 import cPickle as pickle
+import dill
 
 from caliendo.logger import get_logger
 
@@ -11,8 +12,8 @@ ROOT = os.environ.get('CALIENDO_CACHE_PREFIX', None) or DEFAULT_ROOT
 CACHE_DIRECTORY = os.path.join(ROOT, 'cache')
 SEED_DIRECTORY = os.path.join(ROOT, 'seeds')
 EV_DIRECTORY = os.path.join(ROOT, 'evs')
+STACK_DIRECTORY = os.path.join(ROOT, 'stacks')
 LOG_FILEPATH = os.path.join(ROOT, 'used')
-
 
 if not os.path.exists( CACHE_DIRECTORY ):
     os.makedirs(CACHE_DIRECTORY)
@@ -20,6 +21,8 @@ if not os.path.exists( SEED_DIRECTORY ):
     os.makedirs(SEED_DIRECTORY)
 if not os.path.exists(EV_DIRECTORY):
     os.makedirs(EV_DIRECTORY)
+if not os.path.exists(STACK_DIRECTORY):
+    os.makedirs(STACK_DIRECTORY)
 
 def record_used(kind, hash):
     """
@@ -290,3 +293,40 @@ def purge():
             delete_from_directory_by_hashes(SEED_DIRECTORY, to_remove)
 
     reset_used()
+
+def save_stack(stack):
+    """
+    Saves a stack object to a flatfile.
+
+    :param caliendo.hooks.CallStack stack: The stack to save.
+
+    """
+    path = os.path.join(STACK_DIRECTORY, '%s.%s' % (stack.module, stack.caller))
+    with open(path, 'w+') as f:
+        dill.dump(stack, f)
+
+def load_stack(stack):
+    """
+    Loads the saved state of a CallStack and returns a whole instance given an instance with incomplete state.
+
+    :param caliendo.hooks.CallStack stack: The stack to load
+
+    :returns: A CallStack previously built in the context of a patch call.
+    :rtype: caliendo.hooks.CallStack
+
+    """
+    path = os.path.join(STACK_DIRECTORY, '%s.%s' % (stack.module, stack.caller))
+    if os.path.exists(path):
+        with open(path, 'rb') as f:
+            return dill.load(f)
+    return None
+
+def delete_stack(stack):
+    """
+    Deletes a stack that was previously saved.load_stack
+
+    :param caliendo.hooks.CallStack stack: The stack to delete.
+    """
+    path = os.path.join(STACK_DIRECTORY, '%s.%s' % (stack.module, stack.caller))
+    if os.path.exists(path):
+        os.unlink(path)

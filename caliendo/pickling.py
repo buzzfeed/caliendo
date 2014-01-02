@@ -135,15 +135,10 @@ def pickle_with_weak_refs( o ):
 
     :rtype str: The pickled object
     """
-    try:
-        if hasattr(o, '__name__') and o.__name__ == 'generator':
-            return pickle.dumps([item for item in o])
-        return pickle.dumps(o)
-    except:
-        walk = dict([ (path,val) for path, val in objwalk(o)])
-        for path, val in walk.items():
-            if len(path) > MAX_DEPTH or is_lambda(val):
-                truncate_attr_at_path(o, path)
-            if type(val) == weakref.ref:
-                setattr_at_path( o, path, val() ) # Resolve weak references
-        return pickle.dumps(o)
+    walk = dict([ (path,val) for path, val in objwalk(o)])
+    for path, val in walk.items():
+        if len(path) > MAX_DEPTH or is_lambda(val):
+            truncate_attr_at_path(o, path)
+        if type(val) == weakref.ref:
+            setattr_at_path( o, path, val() ) # Resolve weak references
+    return pickle.dumps(o)

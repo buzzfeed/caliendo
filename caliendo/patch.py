@@ -5,8 +5,14 @@ from contextlib import contextmanager
 from mock import _get_target
 
 import caliendo
-from caliendo.facade import cache
+
 from caliendo import UNDEFINED
+from caliendo import Parameters
+
+from caliendo.facade import cache
+from caliendo.hooks import CallStack
+from caliendo.hooks import Hook
+from caliendo.hooks import Context
 
 def find_dependencies(module, depth=0, deps=None, seen=None, max_depth=99):
     """
@@ -106,7 +112,7 @@ def execute_side_effect(side_effect=UNDEFINED, args=UNDEFINED, kwargs=UNDEFINED)
     else:
         raise Exception("Caliendo doesn't know what to do with your side effect.")
 
-def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED):
+def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED, callback=UNDEFINED):
     """
     Patches an attribute of a module referenced on import_path with a decorated 
     version that will use the caliendo cache if rvalue is None. Otherwise it will
@@ -118,7 +124,9 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED
     
     :param str import_path: The import path of the method to patch.
     :param mixed rvalue: The return value of the patched method.
-    :param tuple(list(int), list(str)) ignore: A tuple of arguments to ignore. The first element should be a list of positional arguments. The second should be a list of keys for keyword arguments.
+    :param caliendo.Ignore ignore: Arguments to ignore. The first element should be a list of positional arguments. The second should be a list of keys for keyword arguments.
+    :param function callback: A pickleable callback to execute when the patched method is called and the cache is hit. (has to have been cached the first time).
+
     """
     def patch_test(unpatched_test):
         """
@@ -132,12 +140,18 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED
         :returns: The patched test
         :rtype: instance method
         """
-        def patched_test(*args, **kwargs):
-            caliendo.util.current_test_module = inspect.getmodule(unpatched_test)
+        if hasattr(unpatched_test, '__context'):
+            context = unpatched_test.__context
+            context.enter() # One level deeper
+        else:
+            context = Context(CallStack(unpatched_test),
+                              unpatched_test,
+                              inspect.getmodule(unpatched_test))
 
-            if 'patch' not in unpatched_test.__name__:
-                caliendo.util.current_test_handle = unpatched_test
-                caliendo.util.current_test = "%s.%s" % (unpatched_test.__module__, unpatched_test.__name__)
+        def patched_test(*args, **kwargs):
+            caliendo.util.current_test_module = context.module
+            caliendo.util.current_test_handle = context.handle
+            caliendo.util.current_test = "%s.%s" % (context.module, context.handle.__name__)
 
             if rvalue != UNDEFINED:
                 def patch_with(*args, **kwargs):
@@ -150,9 +164,9 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED
                 def patch_with(*args, **kwargs):
                     if side_effect != UNDEFINED:
                         execute_side_effect(side_effect, args, kwargs)
-                    return cache(method_to_patch, args=args, kwargs=kwargs, ignore=ignore)
+                    return cache(method_to_patch, args=args, kwargs=kwargs, ignore=ignore, call_stack=context.stack, callback=callback)
 
-            to_patch = find_modules_importing(import_path, caliendo.util.current_test_module)
+            to_patch = find_modules_importing(import_path, context.module)
 
             # Patch methods in all modules requiring it
             for module, name, object in to_patch:
@@ -164,7 +178,7 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED
 
             try:
                 # Run the test with patched methods.
-                unpatched_test(*args, **kwargs)
+                return unpatched_test(*args, **kwargs)
             finally:
                 # Un-patch patched methods
                 for module, name, object in to_patch:
@@ -173,6 +187,9 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED
                         setattr(getattr(module, name), attribute, getattr(klass, attribute))
                     else:
                         setattr(module, name, object)
+                context.exit() # One level shallower
+
+        patched_test.__context = context
 
         return patched_test
     return patch_test
