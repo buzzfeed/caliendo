@@ -11,7 +11,7 @@ except ImportError:
 
 setup(
     name='caliendo',
-    version='2.0.7',
+    version='2.0.8',
     packages=find_packages(),
     author='Andrew Kelleher',
     author_email='andrew.kelleher@buzzfeed.com',
@@ -23,5 +23,5 @@ setup(
         'dill==0.2b1'
     ],
     url='http://www.github.com/buzzfeed/caliendo',
-    download_url='https://github.com/buzzfeed/caliendo/archive/caliendo-2.0.7.tar.gz'
+    download_url='https://github.com/buzzfeed/caliendo/archive/2.0.8.tar.gz'
 )
