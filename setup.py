@@ -19,7 +19,8 @@ setup(
     long_description='Allows patching and caching of target methods with VERY little effort.',
     test_suite='test.caliendo_test',
     install_requires=[
-        'mock==1.0.0'
+        'mock==1.0.0',
+        'dill==0.2b1'
     ],
     url='http://www.github.com/buzzfeed/caliendo',
     download_url='https://github.com/buzzfeed/caliendo/archive/caliendo-2.0.7.tar.gz'

@@ -1,5 +1,6 @@
 import inspect
 import tempfile
+import time
 import weakref
 import unittest
 import subprocess
@@ -11,21 +12,22 @@ import os
 os.environ['USE_CALIENDO'] = 'True'
 
 from subprocess import PIPE
-
+from caliendo.db.flatfiles import STACK_DIRECTORY
+from caliendo.db.flatfiles import save_stack
+from caliendo.db.flatfiles import load_stack
+from caliendo.db.flatfiles import delete_stack
 from caliendo.call_descriptor import CallDescriptor
 from caliendo.call_descriptor import fetch
-from caliendo import counter
 from caliendo.facade import patch
 from caliendo.facade import Facade
 from caliendo.facade import Wrapper
 from caliendo.facade import get_hash
 from caliendo.facade import cache
+from caliendo.hooks import CallStack
+from caliendo.hooks import Hook
 from caliendo import Ignore
-from caliendo.util import is_primitive
 from caliendo.util import recache
 from caliendo.util import serialize_args
-from caliendo import util
-from caliendo import config
 
 import caliendo
 
@@ -35,11 +37,33 @@ from api import foobarfoobiz
 from api import foobarfoobaz
 from api import foobar
 from api import foobiz
-from api import foobaz
 from test.api.services.bar import find as find_bar
 from test.api.myclass import MyClass
 
 recache()
+
+myfile = tempfile.NamedTemporaryFile(delete=False)
+myfile.write("0")
+myfile.close()
+def callback(cd):
+    with open(myfile.name, 'rb') as toread:
+        contents = toread.read()
+    if contents:
+        val = int(contents) + 1
+    else:
+        val = 0
+    with open(myfile.name, 'w+') as towrite:
+        towrite.write(str(val))
+
+def callback2(cd):
+    assert cd.hash == 'fake-hash2'
+
+def callback3(cd):
+    assert cd.hash == 'fake-hash3'
+
+def gkeyword(x=1, y=1, z=1):
+    CallOnceEver().update()
+    return x + y + z
 
 class TestModel:
     def __init__(self, a, b):
@@ -109,9 +133,48 @@ class LazyBones(dict):
             self.store[attr] = None
             return self.store[attr]
 
+def bar_find_called(cd):
+    assert cd.methodname == 'find'
+    assert cd.args[0] == 10
+    assert cd.returnval.count('bar') == 10
+
+def biz_find_called(cd):
+    assert cd.methodname == 'find'
+    assert cd.args[0] == 10
+    assert cd.returnval.count('biz') == 10
+    raise Exception('biz find done')
+
+def foo_find_called(cd):
+    assert cd.methodname == 'find'
+    assert cd.args[0] == 10
+    assert cd.returnval.count('foo') == 10
+
 class  CaliendoTestCase(unittest.TestCase):
     def setUp(self):
         caliendo.util.register_suite()
+        stackfiles = os.listdir(STACK_DIRECTORY)
+        for f in stackfiles:
+            filepath = os.path.join(STACK_DIRECTORY, f)
+            if os.path.exists(filepath):
+                os.unlink(filepath)
+
+    def test_callback_in_patch(self):
+        @patch('test.api.services.bar.find', callback=bar_find_called)
+        @patch('test.api.services.biz.find', callback=biz_find_called)
+        @patch('test.api.services.foo.find', callback=foo_find_called)
+        def test():
+            foobarfoobizzes = foobarfoobiz.find(10)
+            os._exit(0)
+
+        for i in range(2):
+            pid = os.fork()
+            if pid:
+                os.waitpid(pid, 0)
+            else:
+                try:
+                    test()
+                except Exception, e:
+                    self.assertEquals(str(e), 'biz find done')
 
     def test_call_descriptor(self):
         hash      = hashlib.sha1( "adsf" ).hexdigest()
@@ -1019,8 +1082,52 @@ class  CaliendoTestCase(unittest.TestCase):
         assert c != d
         assert e != d
 
+    def test_call_hooks(self):
+        from caliendo.db.flatfiles import STACK_DIRECTORY
+        stackfile = os.path.join(STACK_DIRECTORY, 'test.caliendo_test.gkeyword')
+        if os.path.exists(stackfile):
+            os.unlink(stackfile)
 
+        def test(waittime):
+            time.sleep(waittime)
+            cs = CallStack(gkeyword)
+            cache(gkeyword, kwargs={ 'x': 1, 'y': 2, 'z': 3 }, call_stack=cs, callback=callback)
+            cs.save()
+            os._exit(0)
 
+        for i in range(3):
+            pid = os.fork()
+            if pid:
+                os.waitpid(pid, 0)
+            else:
+                test(i * 0.1)
+
+        with open(myfile.name) as f:
+            self.assertEquals(f.read(), '2')
+
+    def test_load_and_save_stack(self):
+        cs = CallStack(self.test_load_and_save_stack)
+
+        h1 = Hook('fake-hash2', callback2)
+        h2 = Hook('fake-hash3', callback3)
+
+        cs.add_hook(h1)
+        cs.add_hook(h2)
+
+        assert len(cs.hooks) == 2
+        assert len(cs.calls) == 0
+        assert cs.hooks['fake-hash2'].hash == 'fake-hash2'
+        assert cs.hooks['fake-hash3'].hash == 'fake-hash3'
+
+        delete_stack(cs)
+
+        save_stack(cs)
+        loaded = load_stack(cs)
+
+        assert len(loaded.hooks) == 2
+        assert len(loaded.calls) == 0
+        assert loaded.hooks['fake-hash2'].hash == 'fake-hash2'
+        assert loaded.hooks['fake-hash3'].hash == 'fake-hash3'
 
 if __name__ == '__main__':
     unittest.main()

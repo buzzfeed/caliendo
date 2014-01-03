@@ -13,6 +13,7 @@ from caliendo import call_descriptor
 from caliendo import counter
 from caliendo import prompt
 from caliendo import UNDEFINED
+from caliendo.hooks import Hook
 
 USE_CALIENDO = config.should_use_caliendo()
 
@@ -350,7 +351,7 @@ def Facade( some_instance=None, exclusion_list=[], cls=None, args=tuple(), kwarg
 
 
 
-def cache( handle=lambda *args, **kwargs: None, args=UNDEFINED, kwargs=UNDEFINED, ignore=UNDEFINED):
+def cache(handle=lambda *args, **kwargs: None, args=UNDEFINED, kwargs=UNDEFINED, ignore=UNDEFINED, call_stack=UNDEFINED, callback=UNDEFINED):
     """
     Store a call descriptor
 
@@ -358,6 +359,8 @@ def cache( handle=lambda *args, **kwargs: None, args=UNDEFINED, kwargs=UNDEFINED
     :param tuple args: The arguments to the method.
     :param dict kwargs: The keyword arguments to the method.
     :param tuple(list(int), list(str)) ignore: A tuple of arguments to ignore. The first element should be a list of positional arguments. The second should be a list of keys for keyword arguments.
+    :param caliendo.hooks.CallStack call_stack: The stack of calls thus far for this patch.
+    :param function callback: The callback function to execute each time there is a cache hit for 'handle' (actually mechanism is more complicated, but this is what it boils down to)
 
     :returns: The value of handle(*args, **kwargs)
     """
@@ -404,6 +407,12 @@ def cache( handle=lambda *args, **kwargs: None, args=UNDEFINED, kwargs=UNDEFINED
                                              kwargs    = kwargs )
 
         cd.save()
+
+    if call_stack != UNDEFINED:
+        call_stack.add(cd)
+        if callback != UNDEFINED:
+            call_stack.add_hook(Hook(call_descriptor_hash=cd.hash,
+                                     callback=callback))
 
     util.last_hash = cd.hash
 
