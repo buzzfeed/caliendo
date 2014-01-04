@@ -11,14 +11,45 @@ from caliendo import counter
 from caliendo import call_descriptor
 
 global test_suite
-global last_hash
 global current_test
 
+last_hash = None
+current_hash = None
 current_test = False
 test_suite = False
 
 if config.should_use_caliendo():
     from caliendo.db.flatfiles import delete_io, get_unique_hashes # No connection. It's ok.
+
+def set_last_hash(h):
+    """
+    Sets the hash for which a CallDescriptor completed last
+
+    """
+    global last_hash
+    last_hash = h
+
+def get_last_hash():
+    """
+    Gets the hash for which a CallDescriptor completed last
+
+    """
+    return last_hash
+
+def set_current_hash(h):
+    """
+    Sets the hash for which a CallDescriptor is currently executing
+
+    """
+    global current_hash
+    current_hash = h
+
+def get_current_hash():
+    """
+    Gets the hash for which a CallDescriptor is currently executing
+
+    """
+    return current_hash
 
 def register_suite():
     """

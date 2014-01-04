@@ -259,6 +259,53 @@ class ApiTest(unittest.TestCase):
 
 ```
 
+### Record and Replay calls to Callback Functions 
+
+When you patch a method with a callback function there's a small problem. When the cache hit occurs; the callback function never executes. 
+
+There's a decorator to allow you to execute the callback functions almost normally. If you have a patched method which calls a few callbacks before completing execution you can add a `replay` decorator to indicate calls to the callbacks should be replayed.
+
+For example:
+
+```python
+
+"""
+In test/api/foobar.py
+"""
+def callback_for_method(a, b, c):
+    assert a == 1
+    assert b == 2
+    assert c == 3
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'callback_notes')
+    if os.path.exists(path):
+        with open(path, 'a') as f:
+            f.write('.')
+    else:
+        with open(path, 'w+') as f:
+            f.write('.')
+    return path
+
+def method_with_callback(callback):
+    return callback(1, 2, 3)
+
+"""
+In my test module
+"""
+@replay('test.api.foobar.callback_for_method')
+@patch('test.api.foobar.method_with_callback')
+def test(i):
+    filename = method_with_callback(callback_for_method)
+    with open(filename, 'rb') as f:
+        assert f.read() == ('.' * (i+1))
+
+```
+
+If test(i) is run in many sessions, were i is in index of the session this test will always pass.
+
+Even though `method_with_callback` is only called the very first time the test is run, a hook is created for the callback such that each time there is a cache-hit associated with method_with_callback, the callback is executed with the expected arguments.
+
+There are some downsides. Arguments must be pickleable. Furthermore; runtime resources such as database connections passed via closures will be lost. One workaround is to establish those in the callback at runtime.
+
 ### Ignore Dynamic Arguments to Patched Functions
 
 In the event you must pass a dynamic argument to a patched method you can use the `Ignore` class to specify which paramters should be ignored.
