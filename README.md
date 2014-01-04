@@ -8,6 +8,8 @@ of calls and caching responses based on the sequence of execution as well as
 function arguments. In some cases this improves unit test performance by
 several orders of magnitude.
 
+If you have any questions or comments about caliendo or if you're interested in contributing feel free to contact Andrew at andrew.kelleher@buzzfeed.com
+
 ## Installation
 
 Caliendo is set up to install with `pip`. You can install it directly from
