@@ -19,6 +19,7 @@ from caliendo.db.flatfiles import delete_stack
 from caliendo.call_descriptor import CallDescriptor
 from caliendo.call_descriptor import fetch
 from caliendo.facade import patch
+from caliendo.patch import replay
 from caliendo.facade import Facade
 from caliendo.facade import Wrapper
 from caliendo.facade import get_hash
@@ -33,6 +34,7 @@ import caliendo
 
 from nested.bazbiz import baz
 from foobar import bazbiz
+from api.foobar import method_calling_method
 from api import foobarfoobiz
 from api import foobarfoobaz
 from api import foobar
@@ -157,7 +159,8 @@ class  CaliendoTestCase(unittest.TestCase):
             filepath = os.path.join(STACK_DIRECTORY, f)
             if os.path.exists(filepath):
                 os.unlink(filepath)
-
+    
+    """
     def test_callback_in_patch(self):
         @patch('test.api.services.bar.find', callback=bar_find_called)
         @patch('test.api.services.biz.find', callback=biz_find_called)
@@ -1128,6 +1131,33 @@ class  CaliendoTestCase(unittest.TestCase):
         assert len(loaded.calls) == 0
         assert loaded.hooks['fake-hash2'].hash == 'fake-hash2'
         assert loaded.hooks['fake-hash3'].hash == 'fake-hash3'
+
+    """
+    @patch('test.api.foobar.method_with_callback')
+    def test_replay(self):
+
+        @replay('test.api.foobar.callback_for_method')
+        @patch('test.api.foobar.method_calling_method')
+        def test(i):
+            filename = method_calling_method()
+            with open(filename, 'rb') as f:
+                assert f.read() == '.'
+            if os.path.exists(filename):
+                os.unlink(filename)
+            os._exit(0)
+
+        for i in range(3):
+            pid = os.fork()
+            if pid:
+                os.waitpid(pid, 0)
+            else:
+                test(i)
+
+        with open(foobar.file.name, 'rb') as f:
+            assert f.read() == '.'
+
+        if os.path.exists(foobar.file.name):
+            os.unlink(foobar.file.name)
 
 if __name__ == '__main__':
     unittest.main()

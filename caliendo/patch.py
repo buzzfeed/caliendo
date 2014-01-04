@@ -193,3 +193,33 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED
 
         return patched_test
     return patch_test
+
+def replay(import_path):
+    def patch_method(unpatched_method):
+        print "Patching in context of %s" % unpatched_method
+        if hasattr(unpatched_method, '__context'):
+            context = unpatched_method.__context
+        else:
+            context = Context(CallStack(unpatched_method),
+                              unpatched_method,
+                              inspect.getmodule(unpatched_method))
+
+        print "Patching path: %s" % import_path
+        getter, attribute = _get_target(import_path)
+        method_to_patch = getattr(getter(), attribute)
+
+        @patch(import_path, callback=method_to_patch)
+        def patched_method(*args, **kwargs):
+            return unpatched_method(*args, **kwargs) 
+
+        patched_method.__context = context
+
+        return patched_method
+    return patch_method
+
+
+
+
+
+
+
