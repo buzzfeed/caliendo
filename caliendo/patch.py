@@ -201,6 +201,15 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED
     return patch_test
 
 def get_recorder(import_path, ctxt):
+    """
+    Gets a recorder for a particular target given a particular context
+
+    :param str import_path: The import path of the method to record
+    :param caliendo.hooks.Context ctxt: The context to record
+
+    :rtype: function
+    :returns: A method that acts like the target, but adds a hook for each call.
+    """
     getter, attribute = _get_target(import_path)
     method_to_patch = getattr(getter(), attribute)
     def recorder(*args, **kwargs):
@@ -212,6 +221,14 @@ def get_recorder(import_path, ctxt):
 
 
 def replay(import_path):
+    """
+    Replays calls to a method located at import_path. These calls must occur after the start of a method for which there is a cache hit. E.g. after a method patched with patch() or cached with cache()
+
+    :param str import_path: The absolute import path for the method to monitor and replay as a string.
+
+    :rtype: function
+    :returns: The decorated method with all existing references to the target replaced with a recorder to replay it
+    """
     def patch_method(unpatched_method):
         if hasattr(unpatched_method, '__context'):
             context = unpatched_method.__context
