@@ -44,11 +44,17 @@ class CallStack(object):
 
         self.calls = []
         self.hooks = {}
+        self.__skip = {}
 
         if caller != UNDEFINED:
             self.module  = inspect.getmodule(caller).__name__
             self.caller  = caller.__name__
             self.load()
+
+    def skip_once(self, call_descriptor_hash):
+        if call_descriptor_hash not in self.__skip:
+            self.__skip[call_descriptor_hash] = 0
+        self.__skip[call_descriptor_hash] += 1
 
     def load(self):
         """
@@ -94,9 +100,14 @@ class CallStack(object):
         """
         h = call_descriptor.hash
         self.calls.append(h)
-        hook = self.hooks.get(h, False)
-        if hook:
-            hook.callback(call_descriptor)
+        if h in self.__skip:
+            self.__skip[h] -= 1
+            if self.__skip[h] == 0:
+                del self.__skip[h]
+        else:
+            hook = self.hooks.get(h, False)
+            if hook:
+                hook.callback(call_descriptor)
 
     def add_hook(self, hook):
         """
