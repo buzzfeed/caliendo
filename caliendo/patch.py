@@ -1,6 +1,7 @@
 import inspect
 import sys
 import types
+import copy
 from contextlib import contextmanager
 from mock import _get_target
 
@@ -10,9 +11,12 @@ from caliendo import UNDEFINED
 from caliendo import Parameters
 
 from caliendo.facade import cache
+
 from caliendo.hooks import CallStack
 from caliendo.hooks import Hook
 from caliendo.hooks import Context
+
+from caliendo import util
 
 def find_dependencies(module, depth=0, deps=None, seen=None, max_depth=99):
     """
@@ -112,7 +116,7 @@ def execute_side_effect(side_effect=UNDEFINED, args=UNDEFINED, kwargs=UNDEFINED)
     else:
         raise Exception("Caliendo doesn't know what to do with your side effect.")
 
-def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED, callback=UNDEFINED):
+def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED, callback=UNDEFINED, ctxt=UNDEFINED):
     """
     Patches an attribute of a module referenced on import_path with a decorated 
     version that will use the caliendo cache if rvalue is None. Otherwise it will
@@ -140,31 +144,32 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED
         :returns: The patched test
         :rtype: instance method
         """
-        if hasattr(unpatched_test, '__context'):
-            context = unpatched_test.__context
-            context.enter() # One level deeper
+        if ctxt == UNDEFINED:
+            if hasattr(unpatched_test, '__context'):
+                context = unpatched_test.__context
+            else:
+                context = Context(CallStack(unpatched_test),
+                                  unpatched_test,
+                                  inspect.getmodule(unpatched_test))
         else:
-            context = Context(CallStack(unpatched_test),
-                              unpatched_test,
-                              inspect.getmodule(unpatched_test))
+            context = ctxt
+
+        context.enter()
 
         def patched_test(*args, **kwargs):
             caliendo.util.current_test_module = context.module
             caliendo.util.current_test_handle = context.handle
             caliendo.util.current_test = "%s.%s" % (context.module, context.handle.__name__)
 
-            if rvalue != UNDEFINED:
-                def patch_with(*args, **kwargs):
+            getter, attribute = _get_target(import_path)
+            method_to_patch = getattr(getter(), attribute)
+            def patch_with(*args, **kwargs):
+                try:
                     if side_effect != UNDEFINED:
                         return execute_side_effect(side_effect, args, kwargs)
-                    return rvalue
-            else:
-                getter, attribute = _get_target(import_path)
-                method_to_patch = getattr(getter(), attribute)
-                def patch_with(*args, **kwargs):
-                    if side_effect != UNDEFINED:
-                        execute_side_effect(side_effect, args, kwargs)
-                    return cache(method_to_patch, args=args, kwargs=kwargs, ignore=ignore, call_stack=context.stack, callback=callback)
+                    return rvalue if rvalue != UNDEFINED else cache(method_to_patch, args=args, kwargs=kwargs, ignore=ignore, call_stack=context.stack, callback=callback)
+                finally:
+                    pass # Execute hooks here
 
             to_patch = find_modules_importing(import_path, context.module)
 
@@ -187,6 +192,7 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED
                         setattr(getattr(module, name), attribute, getattr(klass, attribute))
                     else:
                         setattr(module, name, object)
+
                 context.exit() # One level shallower
 
         patched_test.__context = context
@@ -194,9 +200,19 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED
         return patched_test
     return patch_test
 
+def get_recorder(import_path, ctxt):
+    getter, attribute = _get_target(import_path)
+    method_to_patch = getattr(getter(), attribute)
+    def recorder(*args, **kwargs):
+        ctxt.stack.add_hook(Hook(call_descriptor_hash=util.get_current_hash(),
+                                 callback=lambda cd: method_to_patch(*args, **kwargs)))
+        ctxt.stack.skip_once(util.get_current_hash())
+        return method_to_patch(*args, **kwargs)
+    return recorder
+
+
 def replay(import_path):
     def patch_method(unpatched_method):
-        print "Patching in context of %s" % unpatched_method
         if hasattr(unpatched_method, '__context'):
             context = unpatched_method.__context
         else:
@@ -204,22 +220,19 @@ def replay(import_path):
                               unpatched_method,
                               inspect.getmodule(unpatched_method))
 
-        print "Patching path: %s" % import_path
-        getter, attribute = _get_target(import_path)
-        method_to_patch = getattr(getter(), attribute)
+        context.enter()
 
-        @patch(import_path, callback=method_to_patch)
+        recorder = get_recorder(import_path, context)
+
+        @patch(import_path, side_effect=recorder, ctxt=context)
         def patched_method(*args, **kwargs):
-            return unpatched_method(*args, **kwargs) 
+            try:
+                return unpatched_method(*args, **kwargs)
+            finally:
+                context.exit()
 
         patched_method.__context = context
 
         return patched_method
     return patch_method
-
-
-
-
-
-
 

@@ -376,6 +376,8 @@ def cache(handle=lambda *args, **kwargs: None, args=UNDEFINED, kwargs=UNDEFINED,
     cd                = call_descriptor.fetch(call_hash)
     modify_or_replace = 'no'
 
+    util.set_current_hash(call_hash)
+
     if config.CALIENDO_PROMPT:
         display_name = ("(test %s): " % caliendo.util.current_test) if caliendo.util.current_test else ''
         if hasattr(handle, '__module__') and hasattr(handle, '__name__'):
@@ -408,13 +410,14 @@ def cache(handle=lambda *args, **kwargs: None, args=UNDEFINED, kwargs=UNDEFINED,
 
         cd.save()
 
+    util.set_last_hash(cd.hash)
+
     if call_stack != UNDEFINED:
         call_stack.add(cd)
         if callback != UNDEFINED:
             call_stack.add_hook(Hook(call_descriptor_hash=cd.hash,
                                      callback=callback))
 
-    util.last_hash = cd.hash
 
     return cd.returnval
 

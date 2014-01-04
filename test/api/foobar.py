@@ -15,9 +15,13 @@ def callback_for_method(a, b, c):
     assert b == 2
     assert c == 3
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'callback_notes')
-    print "Opening %s" % path
-    with open(path, 'w+') as f:
-        f.write('.')
+    if os.path.exists(path):
+        with open(path, 'a') as f:
+            f.write('.')
+    else:
+        with open(path, 'w+') as f:
+            f.write('.')
+
     return path
 
 def method_with_callback(callback):

@@ -160,14 +160,19 @@ class  CaliendoTestCase(unittest.TestCase):
             if os.path.exists(filepath):
                 os.unlink(filepath)
     
-    """
     def test_callback_in_patch(self):
-        @patch('test.api.services.bar.find', callback=bar_find_called)
-        @patch('test.api.services.biz.find', callback=biz_find_called)
-        @patch('test.api.services.foo.find', callback=foo_find_called)
-        def test():
-            foobarfoobizzes = foobarfoobiz.find(10)
-            os._exit(0)
+
+        def run_test():
+            @patch('test.api.services.bar.find', callback=bar_find_called)
+            @patch('test.api.services.biz.find', callback=biz_find_called)
+            @patch('test.api.services.foo.find', callback=foo_find_called)
+            def test():
+                foobarfoobizzes = foobarfoobiz.find(10)
+
+            try:
+                test()
+            finally:
+                os._exit(0)
 
         for i in range(2):
             pid = os.fork()
@@ -175,7 +180,7 @@ class  CaliendoTestCase(unittest.TestCase):
                 os.waitpid(pid, 0)
             else:
                 try:
-                    test()
+                    run_test()
                 except Exception, e:
                     self.assertEquals(str(e), 'biz find done')
 
@@ -1086,16 +1091,13 @@ class  CaliendoTestCase(unittest.TestCase):
         assert e != d
 
     def test_call_hooks(self):
-        from caliendo.db.flatfiles import STACK_DIRECTORY
-        stackfile = os.path.join(STACK_DIRECTORY, 'test.caliendo_test.gkeyword')
-        if os.path.exists(stackfile):
-            os.unlink(stackfile)
-
         def test(waittime):
             time.sleep(waittime)
             cs = CallStack(gkeyword)
             cache(gkeyword, kwargs={ 'x': 1, 'y': 2, 'z': 3 }, call_stack=cs, callback=callback)
             cs.save()
+
+
             os._exit(0)
 
         for i in range(3):
@@ -1132,32 +1134,35 @@ class  CaliendoTestCase(unittest.TestCase):
         assert loaded.hooks['fake-hash2'].hash == 'fake-hash2'
         assert loaded.hooks['fake-hash3'].hash == 'fake-hash3'
 
-    """
-    @patch('test.api.foobar.method_with_callback')
     def test_replay(self):
+        def run_test(i):
+            @replay('test.api.foobar.callback_for_method')
+            @patch('test.api.foobar.method_calling_method')
+            def test(i):
+                filename = method_calling_method()
+                with open(filename, 'rb') as f:
+                    assert f.read() == ('.' * (i+1))
 
-        @replay('test.api.foobar.callback_for_method')
-        @patch('test.api.foobar.method_calling_method')
-        def test(i):
-            filename = method_calling_method()
-            with open(filename, 'rb') as f:
-                assert f.read() == '.'
-            if os.path.exists(filename):
-                os.unlink(filename)
+            test(i)
             os._exit(0)
+
 
         for i in range(3):
             pid = os.fork()
             if pid:
                 os.waitpid(pid, 0)
             else:
-                test(i)
+                run_test(i)
 
         with open(foobar.file.name, 'rb') as f:
             assert f.read() == '.'
 
+        filename = method_calling_method()
+        if os.path.exists(filename):
+            os.unlink(filename)
         if os.path.exists(foobar.file.name):
             os.unlink(foobar.file.name)
+
 
 if __name__ == '__main__':
     unittest.main()
