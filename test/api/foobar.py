@@ -21,7 +21,6 @@ def callback_for_method(a, b, c):
     else:
         with open(path, 'w+') as f:
             f.write('.')
-
     return path
 
 def method_with_callback(callback):

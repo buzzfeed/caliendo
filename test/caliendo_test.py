@@ -34,7 +34,7 @@ import caliendo
 
 from nested.bazbiz import baz
 from foobar import bazbiz
-from api.foobar import method_calling_method
+from api.foobar import method_calling_method, method_with_callback, callback_for_method
 from api import foobarfoobiz
 from api import foobarfoobaz
 from api import foobar
@@ -1137,9 +1137,9 @@ class  CaliendoTestCase(unittest.TestCase):
     def test_replay(self):
         def run_test(i):
             @replay('test.api.foobar.callback_for_method')
-            @patch('test.api.foobar.method_calling_method')
+            @patch('test.api.foobar.method_with_callback')
             def test(i):
-                filename = method_calling_method()
+                filename = method_with_callback(callback_for_method)
                 with open(filename, 'rb') as f:
                     assert f.read() == ('.' * (i+1))
 
