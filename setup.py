@@ -15,7 +15,7 @@ setup(
     author_email='andrew.kelleher@buzzfeed.com',
     description='Makes mocking services for tests simpler by caching calls to services and loading those responses as fixtures.',
     long_description='Makes mocking services for tests simpler by caching calls to services and loading those responses as fixtures.',
-    test_suite='test.caliendo_test',
+    test_suite='test.all_tests',
     install_requires=[
         'mock==1.0.0',
         'dill==0.2b1'
