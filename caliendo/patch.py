@@ -114,7 +114,65 @@ def execute_side_effect(side_effect=UNDEFINED, args=UNDEFINED, kwargs=UNDEFINED)
     elif hasattr(side_effect, '__call__'): # If it's callable...
         return side_effect(*args, **kwargs)
     else:
-        raise Exception("Caliendo doesn't know what to do with your side effect.")
+        raise Exception("Caliendo doesn't know what to do with your side effect. {0}".format(side_effect))
+
+def get_replacement_method(method_to_patch, side_effect=UNDEFINED, rvalue=UNDEFINED, ignore=UNDEFINED, callback=UNDEFINED, context=UNDEFINED):
+    def patch_with(*args, **kwargs):
+        if side_effect != UNDEFINED:
+            return execute_side_effect(side_effect, args, kwargs)
+        return rvalue if rvalue != UNDEFINED else cache(method_to_patch, args=args, kwargs=kwargs, ignore=ignore, call_stack=context.stack, callback=callback)
+    return patch_with
+
+def get_patched_test(import_path, unpatched_test, rvalue=UNDEFINED, side_effect=UNDEFINED, context=UNDEFINED, ignore=UNDEFINED, callback=UNDEFINED):
+    def patched_test(*args, **kwargs):
+        caliendo.util.current_test_module = context.module
+        caliendo.util.current_test_handle = context.handle
+        caliendo.util.current_test = "%s.%s" % (context.module, context.handle.__name__)
+
+        getter, attribute = _get_target(import_path)
+        method_to_patch = getattr(getter(), attribute)
+
+        patch_with = get_replacement_method(method_to_patch,
+                                            side_effect=side_effect,
+                                            rvalue=rvalue,
+                                            ignore=ignore,
+                                            callback=callback,
+                                            context=context)
+
+        to_patch = find_modules_importing(import_path, context.module)
+
+        # Patch methods in all modules requiring it
+        for module, name, object in to_patch:
+            if hasattr(object, '__len__') and len(object) == 2: # We're patching an unbound method
+                klass, attribute = object
+                setattr(getattr(module, name), attribute, patch_with)
+            else:
+                setattr(module, name, patch_with)
+
+        try:
+            # Run the test with patched methods.
+            return unpatched_test(*args, **kwargs)
+        finally:
+            # Un-patch patched methods
+            for module, name, object in to_patch:
+                if hasattr(object, '__len__') and len(object) == 2: # We're patching an unbound method
+                    klass, attribute = object
+                    setattr(getattr(module, name), attribute, getattr(klass, attribute))
+                else:
+                    setattr(module, name, object)
+
+            context.exit() # One level shallower
+
+    return patched_test
+
+def get_context(unpatched_test):
+    if hasattr(unpatched_test, '__context'):
+        context = unpatched_test.__context
+    else:
+        context = Context(CallStack(unpatched_test),
+                          unpatched_test,
+                          inspect.getmodule(unpatched_test))
+    return context
 
 def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED, callback=UNDEFINED, ctxt=UNDEFINED):
     """
@@ -145,55 +203,18 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED
         :rtype: instance method
         """
         if ctxt == UNDEFINED:
-            if hasattr(unpatched_test, '__context'):
-                context = unpatched_test.__context
-            else:
-                context = Context(CallStack(unpatched_test),
-                                  unpatched_test,
-                                  inspect.getmodule(unpatched_test))
+            context = get_context(unpatched_test)
         else:
             context = ctxt
 
         context.enter()
 
-        def patched_test(*args, **kwargs):
-            caliendo.util.current_test_module = context.module
-            caliendo.util.current_test_handle = context.handle
-            caliendo.util.current_test = "%s.%s" % (context.module, context.handle.__name__)
-
-            getter, attribute = _get_target(import_path)
-            method_to_patch = getattr(getter(), attribute)
-            def patch_with(*args, **kwargs):
-                try:
-                    if side_effect != UNDEFINED:
-                        return execute_side_effect(side_effect, args, kwargs)
-                    return rvalue if rvalue != UNDEFINED else cache(method_to_patch, args=args, kwargs=kwargs, ignore=ignore, call_stack=context.stack, callback=callback)
-                finally:
-                    pass # Execute hooks here
-
-            to_patch = find_modules_importing(import_path, context.module)
-
-            # Patch methods in all modules requiring it
-            for module, name, object in to_patch:
-                if hasattr(object, '__len__') and len(object) == 2: # We're patching an unbound method
-                    klass, attribute = object
-                    setattr(getattr(module, name), attribute, patch_with)
-                else:
-                    setattr(module, name, patch_with)
-
-            try:
-                # Run the test with patched methods.
-                return unpatched_test(*args, **kwargs)
-            finally:
-                # Un-patch patched methods
-                for module, name, object in to_patch:
-                    if hasattr(object, '__len__') and len(object) == 2: # We're patching an unbound method
-                        klass, attribute = object
-                        setattr(getattr(module, name), attribute, getattr(klass, attribute))
-                    else:
-                        setattr(module, name, object)
-
-                context.exit() # One level shallower
+        patched_test = get_patched_test(import_path, unpatched_test,
+                                        rvalue=rvalue,
+                                        side_effect=side_effect,
+                                        context=context,
+                                        ignore=ignore,
+                                        callback=callback)
 
         patched_test.__context = context
 
@@ -230,13 +251,7 @@ def replay(import_path):
     :returns: The decorated method with all existing references to the target replaced with a recorder to replay it
     """
     def patch_method(unpatched_method):
-        if hasattr(unpatched_method, '__context'):
-            context = unpatched_method.__context
-        else:
-            context = Context(CallStack(unpatched_method),
-                              unpatched_method,
-                              inspect.getmodule(unpatched_method))
-
+        context = get_context(unpatched_method)
         context.enter()
 
         recorder = get_recorder(import_path, context)
@@ -252,4 +267,53 @@ def replay(import_path):
 
         return patched_method
     return patch_method
+
+def patch_lazy(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED, callback=UNDEFINED, ctxt=UNDEFINED):
+    """
+    Patches lazy-loaded methods of classes. Patching at the class definition overrides the __getattr__ method for the class with a new version that patches any callables returned by __getattr__ with a key matching the last element of the dot path given
+
+    """
+    def patch_method(unpatched_method):
+        context = get_context(unpatched_method)
+        context.enter()
+
+        getter, attribute = _get_target(import_path)
+        klass = getter()
+
+        getattr_path = ".".join(import_path.split('.')[0:-1] + ['__getattr__'])
+
+        def wrapper(wrapped_method, instance, attr):
+            lazy_loaded = wrapped_method.original(instance, attr)
+
+            if attr != attribute:
+                return lazy_loaded
+
+            return get_replacement_method(lazy_loaded,
+                                          side_effect=side_effect,
+                                          rvalue=rvalue,
+                                          ignore=ignore,
+                                          callback=callback,
+                                          context=context)
+
+        @patch(getattr_path, side_effect=WrappedMethod(klass.__getattr__, wrapper), ctxt=context)
+        def patched_method(*args, **kwargs):
+            try:
+                return unpatched_method(*args, **kwargs)
+            finally:
+                context.exit()
+
+        patched_method.__context = context
+
+        return patched_method
+    return patch_method
+
+
+class WrappedMethod(object):
+
+    def __init__(self, original, wrapper):
+        self.__wrapper  = wrapper
+        self.original = original
+
+    def __call__(self, *args, **kwargs):
+        return self.__wrapper(self, *args, **kwargs)
 
