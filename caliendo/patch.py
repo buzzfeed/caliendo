@@ -118,6 +118,13 @@ def execute_side_effect(side_effect=UNDEFINED, args=UNDEFINED, kwargs=UNDEFINED)
 def get_replacement_method(method_to_patch, side_effect=UNDEFINED, rvalue=UNDEFINED, ignore=UNDEFINED, callback=UNDEFINED, context=UNDEFINED):
     """
     Returns the method to be applied in place of an original method. This method either executes a side effect, returns an rvalue, or implements caching in place of the method_to_patch 
+    
+    :param function method_to_patch: A reference to the method that will be patched.  
+    :param mixed side_effect: The side effect to execute. Either a callable with the same parameters as the target, or an exception. 
+    :param mixed rvalue: The value that should be immediately returned without executing the target. 
+    :param caliendo.Ignore ignore: The parameters that should be ignored when determining cachekeys. These are typically the dynamic values such as datetime.datetime.now() or a setting from an environment specific file.
+    :param function callback: A pickleable callback to execute when the patched method is called and the cache is hit. (has to have been cached the first time).
+    :param caliendo.hooks.Context ctxt: The context this patch should be executed under. Generally reserved for internal use. The vast majority of use cases should leave this parameter alone.
 
     :rtype: function
     :returns: The function to replace all references to method_to_patch with.
@@ -131,6 +138,14 @@ def get_replacement_method(method_to_patch, side_effect=UNDEFINED, rvalue=UNDEFI
 def get_patched_test(import_path, unpatched_test, rvalue=UNDEFINED, side_effect=UNDEFINED, context=UNDEFINED, ignore=UNDEFINED, callback=UNDEFINED):
     """
     Defines a method for the decorator to return. The return value is the patched version of the original test. The original test will be run in the context for the patch, and the patched methods will be restored to their original state when the context's depth has counted down to 0 
+    
+    :param str import_path: The import path of the method to patch.
+    :param function unpatched_test: A reference to the method that will be patched.  
+    :param mixed rvalue: The value that should be immediately returned without executing the target. 
+    :param mixed side_effect: The side effect to execute. Either a callable with the same parameters as the target, or an exception. 
+    :param caliendo.hooks.Context ctxt: The context this patch should be executed under. Generally reserved for internal use. The vast majority of use cases should leave this parameter alone.
+    :param caliendo.Ignore ignore: The parameters that should be ignored when determining cachekeys. These are typically the dynamic values such as datetime.datetime.now() or a setting from an environment specific file.
+    :param function callback: A pickleable callback to execute when the patched method is called and the cache is hit. (has to have been cached the first time).
 
     """
     def patched_test(*args, **kwargs):
@@ -201,8 +216,10 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED
     
     :param str import_path: The import path of the method to patch.
     :param mixed rvalue: The return value of the patched method.
+    :param mixed side_effect: The side effect to execute. Either a callable with the same parameters as the target, or an exception. 
     :param caliendo.Ignore ignore: Arguments to ignore. The first element should be a list of positional arguments. The second should be a list of keys for keyword arguments.
     :param function callback: A pickleable callback to execute when the patched method is called and the cache is hit. (has to have been cached the first time).
+    :param caliendo.hooks.Context ctxt: The context this patch should be executed under. Generally reserved for internal use. The vast majority of use cases should leave this parameter alone.
 
     """
     def patch_test(unpatched_test):

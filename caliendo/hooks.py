@@ -52,6 +52,11 @@ class CallStack(object):
             self.load()
 
     def skip_once(self, call_descriptor_hash):
+        """
+        Indicates the next encounter of a particular CallDescriptor hash should be ignored. (Used when hooks are created for methods to be executed when some parent call is executed) 
+
+        :param str call_descriptor_hash: The CallDescriptor hash to ignore. This will prevent that descriptor from being executed. 
+        """
         if call_descriptor_hash not in self.__skip:
             self.__skip[call_descriptor_hash] = 0
         self.__skip[call_descriptor_hash] += 1
