@@ -1134,36 +1134,6 @@ class  CaliendoTestCase(unittest.TestCase):
         assert loaded.hooks['fake-hash2'].hash == 'fake-hash2'
         assert loaded.hooks['fake-hash3'].hash == 'fake-hash3'
 
-    def test_replay(self):
-        def run_test(i):
-            @replay('test.api.foobar.callback_for_method')
-            @patch('test.api.foobar.method_with_callback')
-            def test(i):
-                filename = method_with_callback(callback_for_method)
-                with open(filename, 'rb') as f:
-                    assert f.read() == ('.' * (i+1))
-
-            test(i)
-            os._exit(0)
-
-
-        for i in range(3):
-            pid = os.fork()
-            if pid:
-                os.waitpid(pid, 0)
-            else:
-                run_test(i)
-
-        with open(foobar.file.name, 'rb') as f:
-            assert f.read() == '.'
-
-        filename = method_calling_method()
-        if os.path.exists(filename):
-            os.unlink(filename)
-        if os.path.exists(foobar.file.name):
-            os.unlink(foobar.file.name)
-
-
 if __name__ == '__main__':
     unittest.main()
 

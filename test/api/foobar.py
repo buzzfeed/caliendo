@@ -23,7 +23,7 @@ def callback_for_method(a, b, c):
             f.write('.')
     return path
 
-def method_with_callback(callback):
+def method_with_callback(callback, something=None):
     with open(file.name, 'a') as f:
         f.write(".")
     return callback(1, 2, 3)

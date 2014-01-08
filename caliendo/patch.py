@@ -1,7 +1,6 @@
 import inspect
 import sys
 import types
-import copy
 from contextlib import contextmanager
 from mock import _get_target
 
@@ -117,6 +116,12 @@ def execute_side_effect(side_effect=UNDEFINED, args=UNDEFINED, kwargs=UNDEFINED)
         raise Exception("Caliendo doesn't know what to do with your side effect. {0}".format(side_effect))
 
 def get_replacement_method(method_to_patch, side_effect=UNDEFINED, rvalue=UNDEFINED, ignore=UNDEFINED, callback=UNDEFINED, context=UNDEFINED):
+    """
+    Returns the method to be applied in place of an original method. This method either executes a side effect, returns an rvalue, or implements caching in place of the method_to_patch 
+
+    :rtype: function
+    :returns: The function to replace all references to method_to_patch with.
+    """
     def patch_with(*args, **kwargs):
         if side_effect != UNDEFINED:
             return execute_side_effect(side_effect, args, kwargs)
@@ -124,6 +129,10 @@ def get_replacement_method(method_to_patch, side_effect=UNDEFINED, rvalue=UNDEFI
     return patch_with
 
 def get_patched_test(import_path, unpatched_test, rvalue=UNDEFINED, side_effect=UNDEFINED, context=UNDEFINED, ignore=UNDEFINED, callback=UNDEFINED):
+    """
+    Defines a method for the decorator to return. The return value is the patched version of the original test. The original test will be run in the context for the patch, and the patched methods will be restored to their original state when the context's depth has counted down to 0 
+
+    """
     def patched_test(*args, **kwargs):
         caliendo.util.current_test_module = context.module
         caliendo.util.current_test_handle = context.handle
@@ -165,13 +174,19 @@ def get_patched_test(import_path, unpatched_test, rvalue=UNDEFINED, side_effect=
 
     return patched_test
 
-def get_context(unpatched_test):
-    if hasattr(unpatched_test, '__context'):
-        context = unpatched_test.__context
+def get_context(method):
+    """
+    Gets a context for a target function.
+
+    :rtype: caliendo.hooks.Context 
+    :returns: The context for the call. Patches are applied and removed within a context.
+    """
+    if hasattr(method, '__context'):
+        context = method.__context
     else:
-        context = Context(CallStack(unpatched_test),
-                          unpatched_test,
-                          inspect.getmodule(unpatched_test))
+        context = Context(CallStack(method),
+                          method,
+                          inspect.getmodule(method))
     return context
 
 def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED, callback=UNDEFINED, ctxt=UNDEFINED):
@@ -209,7 +224,8 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED
 
         context.enter()
 
-        patched_test = get_patched_test(import_path, unpatched_test,
+        patched_test = get_patched_test(import_path=import_path,
+                                        unpatched_test=unpatched_test,
                                         rvalue=rvalue,
                                         side_effect=side_effect,
                                         context=context,
@@ -272,6 +288,15 @@ def patch_lazy(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDE
     """
     Patches lazy-loaded methods of classes. Patching at the class definition overrides the __getattr__ method for the class with a new version that patches any callables returned by __getattr__ with a key matching the last element of the dot path given
 
+    :param str import_path: The absolute path to the lazy-loaded method to patch. It can be either abstract, or defined by calling __getattr__ 
+    :param mixed rvalue: The value that should be immediately returned without executing the target. 
+    :param mixed side_effect: The side effect to execute. Either a callable with the same parameters as the target, or an exception. 
+    :param caliendo.Ignore ignore: The parameters that should be ignored when determining cachekeys. These are typically the dynamic values such as datetime.datetime.now() or a setting from an environment specific file.
+    :param function callback: The callback function to execute when 
+    :param function callback: A pickleable callback to execute when the patched method is called and the cache is hit. (has to have been cached the first time).
+    :param caliendo.hooks.Context ctxt: The context this patch should be executed under. Generally reserved for internal use. The vast majority of use cases should leave this parameter alone.
+
+    :returns: The patched calling method.
     """
     def patch_method(unpatched_method):
         context = get_context(unpatched_method)
@@ -309,7 +334,13 @@ def patch_lazy(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDE
 
 
 class WrappedMethod(object):
+    """
+    A method to represent a method that has been wrapped while maintaining a reference to the original.
 
+    :param function original: The original function to wrap.
+    :param function wrapper: The wrapper that responds to invokation via __call__. It's passed self for referencing the original method as well as the *args and **kwargs passed in the invokation.
+
+    """
     def __init__(self, original, wrapper):
         self.__wrapper  = wrapper
         self.original = original
