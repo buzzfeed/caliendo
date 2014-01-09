@@ -30,11 +30,16 @@ class Context(object):
     def exists(method):
         if hasattr(method, '__context'):
             return True
-        return False
+        else:
+            return False
 
     @staticmethod
     def increment(method):
-        method.__context.enter()
+        if not hasattr(method, '__context'):
+            raise Exception("Method does not have context!")
+        ctxt = getattr(method, '__context')
+        ctxt.enter()
+        return ctxt 
 
     def enter(self):
         self.depth += 1
