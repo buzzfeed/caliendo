@@ -13,11 +13,28 @@ class Context(object):
     Stores metadata for a set of patch decorators on a single method.
 
     """
-    def __init__(self, stack, calling_method, calling_module):
-        self.stack = stack
+    def __init__(self, calling_method, stack=UNDEFINED):
+        if not calling_method:
+            raise Exception("The calling method is required for the context.")
         self.handle = calling_method
-        self.module = calling_module
+        self.stack = stack
+        self.module = inspect.getmodule(calling_method) 
+        self.name = self.handle.__name__.split('.')[-1]
+
+        if stack == UNDEFINED:
+            self.stack = CallStack(calling_method) 
+
         self.depth = 0
+
+    @staticmethod
+    def exists(method):
+        if hasattr(method, '__context'):
+            return True
+        return False
+
+    @staticmethod
+    def increment(method):
+        method.__context.enter()
 
     def enter(self):
         self.depth += 1

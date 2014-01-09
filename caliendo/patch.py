@@ -140,13 +140,10 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED
         :returns: The patched test
         :rtype: instance method
         """
-        if hasattr(unpatched_test, '__context'):
-            context = unpatched_test.__context
-            context.enter() # One level deeper
+        if Context.exists(unpatched_test): 
+            Context.increment(unpatched_test)
         else:
-            context = Context(CallStack(unpatched_test),
-                              unpatched_test,
-                              inspect.getmodule(unpatched_test))
+            context = Context(unpatched_test) 
 
         def patched_test(*args, **kwargs):
             caliendo.util.current_test_module = context.module
@@ -190,6 +187,7 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED
                 context.exit() # One level shallower
 
         patched_test.__context = context
+        patched_test.__name__ = context.name
 
         return patched_test
     return patch_test
