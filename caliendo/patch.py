@@ -141,7 +141,6 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED
         :rtype: instance method
         """
         if Context.exists(unpatched_test): 
-            print unpatched_test.__context
             context = Context.increment(unpatched_test)
         else:
             context = Context(unpatched_test) 

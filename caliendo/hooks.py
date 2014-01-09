@@ -28,13 +28,28 @@ class Context(object):
 
     @staticmethod
     def exists(method):
+        """
+        Static method to determine if a method has an existing context.
+    
+        :param function method:
+
+        :rtype: bool
+        :returns: True if the method has a context.
+        """
         if hasattr(method, '__context'):
             return True
-        else:
-            return False
+        return False
 
     @staticmethod
     def increment(method):
+        """
+        Static method used to increment the depth of a context belonging to 'method'
+
+        :param function method: A method with a context
+
+        :rtype: caliendo.hooks.Context
+        :returns: The context instance for the method.
+        """
         if not hasattr(method, '__context'):
             raise Exception("Method does not have context!")
         ctxt = getattr(method, '__context')
