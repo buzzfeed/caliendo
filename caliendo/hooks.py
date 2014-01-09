@@ -13,11 +13,48 @@ class Context(object):
     Stores metadata for a set of patch decorators on a single method.
 
     """
-    def __init__(self, stack, calling_method, calling_module):
-        self.stack = stack
+    def __init__(self, calling_method, stack=UNDEFINED):
+        if not calling_method:
+            raise Exception("The calling method is required for the context.")
         self.handle = calling_method
-        self.module = calling_module
+        self.stack = stack
+        self.module = inspect.getmodule(calling_method) 
+        self.name = self.handle.__name__.split('.')[-1]
+
+        if stack == UNDEFINED:
+            self.stack = CallStack(calling_method) 
+
         self.depth = 0
+
+    @staticmethod
+    def exists(method):
+        """
+        Static method to determine if a method has an existing context.
+    
+        :param function method:
+
+        :rtype: bool
+        :returns: True if the method has a context.
+        """
+        if hasattr(method, '__context'):
+            return True
+        return False
+
+    @staticmethod
+    def increment(method):
+        """
+        Static method used to increment the depth of a context belonging to 'method'
+
+        :param function method: A method with a context
+
+        :rtype: caliendo.hooks.Context
+        :returns: The context instance for the method.
+        """
+        if not hasattr(method, '__context'):
+            raise Exception("Method does not have context!")
+        ctxt = getattr(method, '__context')
+        ctxt.enter()
+        return ctxt 
 
     def enter(self):
         self.depth += 1
