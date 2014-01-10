@@ -8,6 +8,12 @@ from caliendo.db.flatfiles import save_stack
 from caliendo.db.flatfiles import load_stack
 from caliendo.db.flatfiles import delete_stack
 
+class ContextException(Exception):
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return "ContextException: {0}".format(self.value)
+
 class Context(object):
     """
     Stores metadata for a set of patch decorators on a single method.
@@ -15,7 +21,7 @@ class Context(object):
     """
     def __init__(self, calling_method, stack=UNDEFINED):
         if not calling_method:
-            raise Exception("The calling method is required for the context.")
+            raise ContextException("The calling method is required for the context.")
         self.handle = calling_method
         self.stack = stack
         self.module = inspect.getmodule(calling_method) 
@@ -24,7 +30,7 @@ class Context(object):
         if stack == UNDEFINED:
             self.stack = CallStack(calling_method) 
 
-        self.depth = 0
+        self.depth = 1
 
     @staticmethod
     def exists(method):
@@ -51,7 +57,7 @@ class Context(object):
         :returns: The context instance for the method.
         """
         if not hasattr(method, '__context'):
-            raise Exception("Method does not have context!")
+            raise ContextException("Method does not have context!")
         ctxt = getattr(method, '__context')
         ctxt.enter()
         return ctxt 
@@ -61,6 +67,8 @@ class Context(object):
 
     def exit(self):
         self.depth -= 1
+        if self.depth < 0:
+            raise ContextException("Invalid 'exit()' call! Context depth is below -1: {0}".format(self.depth))
         if self.depth == 0 and self.stack:
             self.leave_context()
 
@@ -81,11 +89,22 @@ class CallStack(object):
 
         self.calls = []
         self.hooks = {}
+        self.__skip = {}
 
         if caller != UNDEFINED:
             self.module  = inspect.getmodule(caller).__name__
             self.caller  = caller.__name__
             self.load()
+
+    def skip_once(self, call_descriptor_hash):
+        """
+        Indicates the next encounter of a particular CallDescriptor hash should be ignored. (Used when hooks are created for methods to be executed when some parent call is executed) 
+
+        :param str call_descriptor_hash: The CallDescriptor hash to ignore. This will prevent that descriptor from being executed. 
+        """
+        if call_descriptor_hash not in self.__skip:
+            self.__skip[call_descriptor_hash] = 0
+        self.__skip[call_descriptor_hash] += 1
 
     def load(self):
         """
@@ -131,9 +150,14 @@ class CallStack(object):
         """
         h = call_descriptor.hash
         self.calls.append(h)
-        hook = self.hooks.get(h, False)
-        if hook:
-            hook.callback(call_descriptor)
+        if h in self.__skip:
+            self.__skip[h] -= 1
+            if self.__skip[h] == 0:
+                del self.__skip[h]
+        else:
+            hook = self.hooks.get(h, False)
+            if hook:
+                hook.callback(call_descriptor)
 
     def add_hook(self, hook):
         """

@@ -15,3 +15,5 @@ evs/
 .idea
 used
 stacks/
+test/api/cached_method_notes
+test/api/callback_notes
