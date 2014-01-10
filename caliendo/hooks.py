@@ -8,6 +8,12 @@ from caliendo.db.flatfiles import save_stack
 from caliendo.db.flatfiles import load_stack
 from caliendo.db.flatfiles import delete_stack
 
+class ContextException(Exception):
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return "ContextException: {0}".format(self.value)
+
 class Context(object):
     """
     Stores metadata for a set of patch decorators on a single method.
@@ -15,7 +21,7 @@ class Context(object):
     """
     def __init__(self, calling_method, stack=UNDEFINED):
         if not calling_method:
-            raise Exception("The calling method is required for the context.")
+            raise ContextException("The calling method is required for the context.")
         self.handle = calling_method
         self.stack = stack
         self.module = inspect.getmodule(calling_method) 
@@ -24,7 +30,7 @@ class Context(object):
         if stack == UNDEFINED:
             self.stack = CallStack(calling_method) 
 
-        self.depth = 0
+        self.depth = 1
 
     @staticmethod
     def exists(method):
@@ -51,7 +57,7 @@ class Context(object):
         :returns: The context instance for the method.
         """
         if not hasattr(method, '__context'):
-            raise Exception("Method does not have context!")
+            raise ContextException("Method does not have context!")
         ctxt = getattr(method, '__context')
         ctxt.enter()
         return ctxt 
@@ -61,6 +67,8 @@ class Context(object):
 
     def exit(self):
         self.depth -= 1
+        if self.depth < 0:
+            raise ContextException("Invalid 'exit()' call! Context depth is below -1: {0}".format(self.depth))
         if self.depth == 0 and self.stack:
             self.leave_context()
 

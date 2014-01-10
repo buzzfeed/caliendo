@@ -34,7 +34,6 @@ import caliendo
 
 from nested.bazbiz import baz
 from foobar import bazbiz
-from api.foobar import method_calling_method, method_with_callback, callback_for_method
 from api import foobarfoobiz
 from api import foobarfoobaz
 from api import foobar

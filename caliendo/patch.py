@@ -235,6 +235,7 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED
             context = get_context(unpatched_test)
         else:
             context = ctxt
+            context.enter()
 
 
         patched_test = get_patched_test(import_path=import_path,
@@ -293,7 +294,6 @@ def replay(import_path):
                 context.exit()
 
         patched_method.__context = context
-
         return patched_method
     return patch_method
 
@@ -338,8 +338,6 @@ def patch_lazy(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDE
                 return unpatched_method(*args, **kwargs)
             finally:
                 context.exit()
-
-        patched_method.__context = context
 
         return patched_method
     return patch_method
