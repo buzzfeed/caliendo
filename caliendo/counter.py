@@ -8,6 +8,8 @@ if config.should_use_caliendo():
 __counters = { }
 
 def get_from_trace(trace):
+    if os.environ.get('CALIENDO_DISABLE_COUNTER', False) == 'True':
+        return 0
     key = sha1( trace ).hexdigest()
     if key in __counters:
         t = __counters[ key ]
