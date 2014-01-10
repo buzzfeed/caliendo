@@ -1,4 +1,5 @@
 from hashlib import sha1
+import os
 
 from caliendo import config
 
