@@ -38,7 +38,7 @@ def should_exclude(type_or_instance, exclusion_list):
     return False
 
 def get_hash(args, trace_string, kwargs, ignore=UNDEFINED):
-    counter_value = counter.get_from_trace(trace_string)
+    counter_value = counter.get_from_trace_for_cache(trace_string)
 
     if ignore != UNDEFINED:
         args = list(args)
@@ -386,12 +386,12 @@ def cache(handle=lambda *args, **kwargs: None, args=UNDEFINED, kwargs=UNDEFINED,
             display_name += handle
 
         if cd:
-            modify_or_replace = prompt.should_modify_or_replace_cached(display_name) 
+            modify_or_replace = prompt.should_modify_or_replace_cached(display_name)
 
     if not cd or modify_or_replace == 'replace':
         returnval = handle(*args, **kwargs)
     elif cd and modify_or_replace == 'modify':
-        returnval = prompt.modify_cached_value(cd.returnval, 
+        returnval = prompt.modify_cached_value(cd.returnval,
                                                calling_method=display_name,
                                                calling_test='')
     if not cd or modify_or_replace != 'no':
