@@ -8,17 +8,9 @@ if config.should_use_caliendo():
 
 __counters = { }
 
-def get_from_trace_for_ev(trace):
-    if os.environ.get('CALIENDO_DISABLE_EV_COUNTER', False) == 'True':
-        return 0
-    return get_from_trace(trace)
-
-def get_from_trace_for_cache(trace):
-    if os.environ.get('CALIENDO_DISABLE_CACHE_COUNTER', False) == 'True':
-        return 0
-    return get_from_trace(trace)
-
 def get_from_trace(trace):
+    if os.environ.get('CALIENDO_DISABLE_COUNTER', False) == 'True':
+        return 0
     key = sha1( trace ).hexdigest()
     if key in __counters:
         t = __counters[ key ]

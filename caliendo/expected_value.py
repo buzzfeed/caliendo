@@ -16,10 +16,12 @@ if config.should_use_caliendo():
     from caliendo.db.flatfiles import select_expected_value, delete_expected_value, insert_expected_value
 
 def get_or_store(observed_value):
-    caller = inspect.stack()[2][3]
+    caller = inspect.stack()[2][3] 
+
+
     trace_string = util.get_stack(caller)
-    counter_value = counter.get_from_trace_for_ev(trace_string)
-    call_hash = sha1("%s.%s" % (trace_string,
+    counter_value = counter.get_from_trace(trace_string)
+    call_hash = sha1("%s.%s" % (trace_string, 
                                 counter_value)).hexdigest()
 
     ev = fetch(call_hash)
@@ -59,7 +61,7 @@ def fetch( call_hash ):
     """
     res = select_expected_value(call_hash)
     if not res:
-        return None
+        return None 
 
     last_packet_number = -1
     expected_value = ""
@@ -77,7 +79,7 @@ def fetch( call_hash ):
 class ExpectedValueBuffer:
     def __init__(self, expected_value):
         returnval   = pickling.pickle_with_weak_refs(expected_value)
-        self.__data = returnval
+        self.__data = returnval 
         self.length = len(self.__data)
         self.char   = 0
 
