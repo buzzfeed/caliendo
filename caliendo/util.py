@@ -53,9 +53,9 @@ def get_current_hash():
 
 def register_suite():
     """
-    Call this method in a module containing a test suite. The stack trace from 
+    Call this method in a module containing a test suite. The stack trace from
     which call descriptor hashes are derived will be truncated at this module.
-    
+
     """
     global test_suite
     frm = inspect.stack()[1]
@@ -64,7 +64,7 @@ def register_suite():
 def is_primitive(var):
     """
     Checks if an object is in ( float, long, str, int, dict, list, unicode, tuple, set, frozenset, datetime.datetime, datetime.timedelta )
-    
+
     """
     primitives = ( float, long, str, int, dict, list, unicode, tuple, set, frozenset, datetime.datetime, datetime.timedelta, type(None) )
     for primitive in primitives:
@@ -108,7 +108,7 @@ def serialize_args(args):
 
     :rtype: List of arguments, serialized in a consistently ordered fashion.
     """
-    return serialize_item(args)
+    return str([serialize_item(a) for a in args])
 
 def seq():
     """
@@ -214,13 +214,13 @@ def recache( methodname=None, filename=None ):
                 delete_io( hash )
                 deleted = deleted + 1
         return deleted
-    
+
 def get_stack(method_name):
     """
     Returns the stack trace to hash to identify a call descriptor
-    
+
     :param str method_name: The calling method.
-    
+
     :rtype str:
     """
     global test_suite

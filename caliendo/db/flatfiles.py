@@ -8,7 +8,7 @@ from caliendo.logger import get_logger
 logger = get_logger(__name__)
 
 DEFAULT_ROOT = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', '..')
-ROOT = os.environ.get('CALIENDO_CACHE_PREFIX', None) or DEFAULT_ROOT 
+ROOT = os.environ.get('CALIENDO_CACHE_PREFIX', DEFAULT_ROOT)
 CACHE_DIRECTORY = os.path.join(ROOT, 'cache')
 SEED_DIRECTORY = os.path.join(ROOT, 'seeds')
 EV_DIRECTORY = os.path.join(ROOT, 'evs')
@@ -141,9 +141,9 @@ def insert_expected_value(packet):
         filename = "%s_%s" % (hash, packet_num)
         filepath = os.path.join(EV_DIRECTORY, filename)
         with open(filepath, "w+") as f:
-            pickle.dump({'call_hash': hash, 
-                         'expected_value': ev, 
-                         'packet_num': packet_num}, 
+            pickle.dump({'call_hash': hash,
+                         'expected_value': ev,
+                         'packet_num': packet_num},
                          f)
     except IOError:
         if not os.environ.get('CALIENDO_TEST_SUITE', None):
@@ -251,7 +251,7 @@ def read_used():
             kind, hash = tuple(line.split('...'))
             used_hashes[kind].add(hash.rstrip())
 
-    return used_hashes 
+    return used_hashes
 
 def read_all():
     """
@@ -263,13 +263,13 @@ def read_all():
     evs = set(get_packets(EV_DIRECTORY).keys())
     cache = set(get_packets(CACHE_DIRECTORY).keys())
     seeds = set(get_packets(SEED_DIRECTORY).keys())
-    return {"evs"  : evs, 
-            "cache": cache, 
-            "seeds": seeds} 
+    return {"evs"  : evs,
+            "cache": cache,
+            "seeds": seeds}
 
 def reset_used():
     """
-    Deletes all the records of which hashes have been used since the last call to this method. 
+    Deletes all the records of which hashes have been used since the last call to this method.
 
     """
     with open(LOG_FILEPATH, 'w+') as logfile:

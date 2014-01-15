@@ -48,9 +48,9 @@ def get_hash(args, trace_string, kwargs, ignore=UNDEFINED):
             kwargs[k] = None
         args = tuple(args)
 
-    return sha1((str(frozenset(util.serialize_args(args))) + "\n" +
+    return sha1((str(util.serialize_args(args)) + "\n" +
                               str(counter_value) + "\n" +
-                              str(frozenset(util.serialize_args(kwargs))) + "\n" +
+                              str(util.serialize_args(kwargs)) + "\n" +
                               trace_string + "\n" )).hexdigest()
 
 class LazyBones:
