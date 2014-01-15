@@ -1,4 +1,3 @@
-import inspect
 import tempfile
 import time
 import weakref
@@ -12,32 +11,18 @@ import os
 os.environ['USE_CALIENDO'] = 'True'
 
 from subprocess import PIPE
-from caliendo.db.flatfiles import STACK_DIRECTORY
-from caliendo.db.flatfiles import save_stack
-from caliendo.db.flatfiles import load_stack
-from caliendo.db.flatfiles import delete_stack
-from caliendo.call_descriptor import CallDescriptor
-from caliendo.call_descriptor import fetch
-from caliendo.facade import patch
-from caliendo.patch import replay
-from caliendo.facade import Facade
-from caliendo.facade import Wrapper
-from caliendo.facade import get_hash
-from caliendo.facade import cache
-from caliendo.hooks import CallStack
-from caliendo.hooks import Hook
+from caliendo.db.flatfiles import STACK_DIRECTORY, save_stack, load_stack, delete_stack
+from caliendo.call_descriptor import CallDescriptor, fetch
+from caliendo.facade import patch, Facade, Wrapper, get_hash, cache
+from caliendo.hooks import CallStack, Hook
 from caliendo import Ignore
-from caliendo.util import recache
-from caliendo.util import serialize_args
+from caliendo.util import recache, serialize_args, serialize_item
 
 import caliendo
 
 from nested.bazbiz import baz
 from foobar import bazbiz
-from api import foobarfoobiz
-from api import foobarfoobaz
-from api import foobar
-from api import foobiz
+from api import foobarfoobiz, foobarfoobaz, foobar, foobiz
 from test.api.services.bar import find as find_bar
 from test.api.myclass import MyClass
 
@@ -158,7 +143,7 @@ class  CaliendoTestCase(unittest.TestCase):
             filepath = os.path.join(STACK_DIRECTORY, f)
             if os.path.exists(filepath):
                 os.unlink(filepath)
-    
+
     def test_callback_in_patch(self):
 
         def run_test():
@@ -196,7 +181,7 @@ class  CaliendoTestCase(unittest.TestCase):
             returnval=returnval,
             args=args )
 
-        cd.save() 
+        cd.save()
 
         self.assertEqual( cd.hash, hash )
         self.assertEqual( cd.methodname, method )
@@ -217,17 +202,23 @@ class  CaliendoTestCase(unittest.TestCase):
         nested_dict = { 'a': { 'a': 1, 'b': 2 }, 'b': { 'c': 3, 'd': 4 } }
         list_of_nested_dicts = [ { 'a': { 'a': 1, 'b': 2 }, 'b': { 'c': 3, 'd': 4 } } ]
 
-        s_basic_list = serialize_args(basic_list)
-        s_basic_dict = serialize_args(basic_dict)
-        s_nested_list = serialize_args(nested_list)
-        s_nested_dict = serialize_args(nested_dict)
-        s_list_of_nested_dicts = serialize_args(list_of_nested_dicts)
+        s_basic_list = serialize_item(basic_list)
+        s_basic_args_list = serialize_args(basic_list)
+        s_basic_dict = serialize_item(basic_dict)
+        s_nested_list = serialize_item(nested_list)
+        s_nested_args_list = serialize_args(nested_list)
+        s_nested_dict = serialize_item(nested_dict)
+        s_list_of_nested_dicts = serialize_item(list_of_nested_dicts)
+        s_args_list_of_nested_dicts = serialize_args(list_of_nested_dicts)
 
         assert s_basic_list == str(['a', 'b', 'c'])
+        assert s_basic_args_list == str(['a', 'b', 'c'])
         assert s_basic_dict == str(["['1', 'a']", "['2', 'b']", "['3', 'c']"])
         assert s_nested_list == str(["['0', '1', '2']", "['3', '4', '5']"])
+        assert s_nested_args_list == str(["['0', '1', '2']", "['3', '4', '5']"])
         assert s_nested_dict == str(['[\'["[\\\'1\\\', \\\'a\\\']", "[\\\'2\\\', \\\'b\\\']"]\', \'a\']', '[\'["[\\\'3\\\', \\\'c\\\']", "[\\\'4\\\', \\\'d\\\']"]\', \'b\']'])
         assert s_list_of_nested_dicts == str(['[\'[\\\'["[\\\\\\\'1\\\\\\\', \\\\\\\'a\\\\\\\']", "[\\\\\\\'2\\\\\\\', \\\\\\\'b\\\\\\\']"]\\\', \\\'a\\\']\', \'[\\\'["[\\\\\\\'3\\\\\\\', \\\\\\\'c\\\\\\\']", "[\\\\\\\'4\\\\\\\', \\\\\\\'d\\\\\\\']"]\\\', \\\'b\\\']\']'])
+        assert s_args_list_of_nested_dicts == str(['[\'[\\\'["[\\\\\\\'1\\\\\\\', \\\\\\\'a\\\\\\\']", "[\\\\\\\'2\\\\\\\', \\\\\\\'b\\\\\\\']"]\\\', \\\'a\\\']\', \'[\\\'["[\\\\\\\'3\\\\\\\', \\\\\\\'c\\\\\\\']", "[\\\\\\\'4\\\\\\\', \\\\\\\'d\\\\\\\']"]\\\', \\\'b\\\']\']'])
 
     def test_serialize_iterables(self):
         target_set = set([5, 3, 4, 2, 7, 6, 1, 8, 9, 0])
@@ -251,26 +242,50 @@ class  CaliendoTestCase(unittest.TestCase):
         b = [[7, 8, 9], [4, 5, 6], [1, 2, 3]]
         c = [[6, 4, 5], [1, 3, 2], [9, 8, 7]]
 
-        s_a = serialize_args(a)
-        s_b = serialize_args(b)
-        s_c = serialize_args(c)
+        s_a__item = serialize_item(a)
+        s_b__item = serialize_item(b)
+        s_c__item = serialize_item(c)
 
-        assert s_a == s_b
-        assert s_b == s_c
-        assert s_c == str(["['1', '2', '3']", "['4', '5', '6']", "['7', '8', '9']"])
+        assert s_a__item == s_b__item
+        assert s_b__item == s_c__item
+        assert s_c__item == str(["['1', '2', '3']", "['4', '5', '6']", "['7', '8', '9']"])
+
+        s_a__args = serialize_args(a)
+        s_b__args = serialize_args(b)
+        s_c__args = serialize_args(c)
+
+        assert s_a__args != s_b__args
+        assert s_a__args != s_c__args
+        assert s_b__args != s_c__args
+        assert s_a__args == str(["['1', '2', '3']", "['4', '5', '6']", "['7', '8', '9']"])
+        assert s_b__args == str(["['7', '8', '9']", "['4', '5', '6']", "['1', '2', '3']"])
+        assert s_c__args == str(["['4', '5', '6']", "['1', '2', '3']", "['7', '8', '9']"])
+
+
 
     def test_serialize_nested_lists_of_nested_lists(self):
         a = [[[1, 2, 3], [4, 5, 6]], [7, 8, 9]]
         b = [[7, 8, 9], [[4, 5, 6], [1, 2, 3]]]
         c = [[[6, 4, 5], [1, 3, 2]], [9, 8, 7]]
 
-        s_a = serialize_args(a)
-        s_b = serialize_args(b)
-        s_c = serialize_args(c)
+        s_a__item = serialize_item(a)
+        s_b__item = serialize_item(b)
+        s_c__item = serialize_item(c)
 
-        assert s_a == s_b
-        assert s_b == s_c
-        assert s_c == str(['["[\'1\', \'2\', \'3\']", "[\'4\', \'5\', \'6\']"]', "['7', '8', '9']"])
+        assert s_a__item == s_b__item
+        assert s_b__item == s_c__item
+        assert s_c__item == str(['["[\'1\', \'2\', \'3\']", "[\'4\', \'5\', \'6\']"]', "['7', '8', '9']"])
+
+        s_a__args = serialize_args(a)
+        s_b__args = serialize_args(b)
+        s_c__args = serialize_args(c)
+
+        assert s_a__args != s_b__args
+        assert s_a__args == s_c__args
+        assert s_b__args != s_c__args
+        assert s_a__args == str(['["[\'1\', \'2\', \'3\']", "[\'4\', \'5\', \'6\']"]', "['7', '8', '9']"])
+        assert s_b__args == str(["['7', '8', '9']", '["[\'1\', \'2\', \'3\']", "[\'4\', \'5\', \'6\']"]'])
+        assert s_c__args == str(['["[\'1\', \'2\', \'3\']", "[\'4\', \'5\', \'6\']"]', "['7', '8', '9']"])
 
     def test_serialize_dicts(self):
         a = {'a': 1, 'b': 2, 'c': 3}
@@ -280,12 +295,12 @@ class  CaliendoTestCase(unittest.TestCase):
         e = {'b': 2, 'a': 1, 'h': 8, 'd': 4, 'e': 5, 'f': 6, 'g': 7, 'c': 3}
         f = {'e': 5, 'a': 1, 'h': 8, 'd': 4, 'b': 2, 'f': 6, 'g': 7, 'c': 3}
 
-        s_a = serialize_args(a)
-        s_b = serialize_args(b)
-        s_c = serialize_args(c)
-        s_d = serialize_args(d)
-        s_e = serialize_args(e)
-        s_f = serialize_args(f)
+        s_a = serialize_item(a)
+        s_b = serialize_item(b)
+        s_c = serialize_item(c)
+        s_d = serialize_item(d)
+        s_e = serialize_item(e)
+        s_f = serialize_item(f)
 
         assert s_a == s_b
         assert s_b == s_c
@@ -301,9 +316,9 @@ class  CaliendoTestCase(unittest.TestCase):
         c = {'c': TestModel('a', 'b'), 'b': TestModel('b', 'c'), 'a': TestModel('c', 'd')}
         d = set([TestModel('a', 'b'), TestModel('b', 'c'), TestModel('c', 'd')])
 
-        s_a = serialize_args(a)
+        s_a = serialize_item(a)
         s_b = serialize_args(b)
-        s_c = serialize_args(c)
+        s_c = serialize_item(c)
         s_d = serialize_args(d)
 
         assert s_a == 'TestModel'
@@ -319,9 +334,12 @@ class  CaliendoTestCase(unittest.TestCase):
             def c(self):
                 return 'biz'
 
-        serialize_args(a) == '<lambda>'
-        serialize_args(b) == 'b'
-        serialize_args(C().c) == 'c'
+        assert serialize_item(a) == '<lambda>'
+        assert serialize_item(b) == 'b'
+        assert serialize_item(C().c) == 'c'
+        assert serialize_args([a]) == str(['<lambda>'])
+        assert serialize_args([b]) == str(['b'])
+        assert serialize_args([C().c, 1, '2', [3], {'four': 4}]) == str(['c', '1', '2', "['3']", '["[\'4\', \'four\']"]'])
 
     def test_fetch_call_descriptor(self):
         hash      = hashlib.sha1( "test1" ).hexdigest()
@@ -363,10 +381,10 @@ class  CaliendoTestCase(unittest.TestCase):
         self.assertEquals( mtc.methodb( ), mtc_f.methodb( ) )
         self.assertEquals( mtc_f.methoda( ), "a" )
 
-        self.assertEquals( mtc_f.increment( ), 1 ) 
-        self.assertEquals( mtc_f.increment( ), 2 ) 
-        self.assertEquals( mtc_f.increment( ), 3 ) 
-        self.assertEquals( mtc_f.increment( ), 4 ) 
+        self.assertEquals( mtc_f.increment( ), 1 )
+        self.assertEquals( mtc_f.increment( ), 2 )
+        self.assertEquals( mtc_f.increment( ), 3 )
+        self.assertEquals( mtc_f.increment( ), 4 )
 
     def test_update(self):
         o = CallOnceEver()
@@ -424,10 +442,10 @@ class  CaliendoTestCase(unittest.TestCase):
         self.assertEquals( mtc_f.increment( ), 1 )
         self.assertIsNotNone(mtc_f.last_cached)
         hashes.append( mtc_f.last_cached )
-        self.assertEquals( mtc_f.increment( ), 2 ) 
+        self.assertEquals( mtc_f.increment( ), 2 )
         self.assertIsNotNone(mtc_f.last_cached)
         hashes.append( mtc_f.last_cached )
-        self.assertEquals( mtc_f.increment( ), 3 ) 
+        self.assertEquals( mtc_f.increment( ), 3 )
         self.assertIsNotNone(mtc_f.last_cached)
         hashes.append( mtc_f.last_cached )
         self.assertEquals( mtc_f.increment( ), 4 )
@@ -559,7 +577,7 @@ class  CaliendoTestCase(unittest.TestCase):
         a.wrapper__unignore( TestB )
         b = a.getb()
         self.assertEquals( b.__class__, Wrapper )
-        
+
         # Ignore a class:
         c = Facade(TestC())
 
@@ -873,7 +891,7 @@ class  CaliendoTestCase(unittest.TestCase):
             return x + y + z
 
         def test(fh):
-            result = baz() 
+            result = baz()
             fh.write(str(result == 'baz'))
             fh.close()
             os._exit(0)
