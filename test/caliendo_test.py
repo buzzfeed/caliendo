@@ -1084,6 +1084,39 @@ class  CaliendoTestCase(unittest.TestCase):
         comm = p.communicate()
         assert comm[0] == '>>> >>> >>> >>> >>> >>> >>> >>> >>> >>> >>> >>> ', "START:" + comm[0] + ":END"
 
+    @patch('caliendo.counter.get_from_trace_for_cache', rvalue=0)
+    def test_get_hash(self):
+        test_trace_string = 'Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod'
+
+        assert get_hash([1], test_trace_string, {}) == '80fc8e13f14767be1bc9761ca531bc8f543dc1df'
+        assert get_hash([1], test_trace_string, {'a': 1}) == 'a069396bd820b613cec07caf272e76210a90f1e6'
+        assert get_hash([1], test_trace_string, {'a': ''}) == '98e9df9aeb5444fcb1ffebb7d8fe66a6531df324'
+        assert get_hash([1], test_trace_string, {'a': None}) == '0b6098dcac4e5245ef0a76d29802ca43253cc802'
+        assert get_hash([1], test_trace_string, {'a': 'A', 'b': 'B'}) == '499ad514047403a5af5ee67e1fe995941cdefcbd'
+        assert get_hash([1], test_trace_string, {'a': 'A', 'b': 'B', 'c': 'C'}) == 'ae87cdd7347fe57430d39d9406d60d85517c264e'
+
+        assert get_hash([1, '2'], test_trace_string, {}) == 'f2f66daa0c6d8f69073e3fad3e889516af135105'
+        assert get_hash([1, '2'], test_trace_string, {'a': 'A'}) == '9f9c943c2772abf1fe692948a10daaa081836f44'
+        assert get_hash([1, '2'], test_trace_string, {'a': '123123'}) == 'b570c7daae91f71d0220d9d502c56dde81c00c9c'
+        assert get_hash([1, '2'], test_trace_string, {'a': None}) == 'bd355fe16807cb855ef6ca7932e1991c50e4a4f0'
+        assert get_hash([1, '2'], test_trace_string, {'a': 'A', 'b': 'B'}) == '30ab8caa63b1001aae5ec7a8f1eecb236bf360fd'
+        assert get_hash([1, '2'], test_trace_string, {'a': 'A', 'b': 'B', 'c': 'C'}) == '7ee9b5b535ce2212d58070a8f8955fd29d1dd23e'
+
+        assert get_hash([1, '2', 'three'], test_trace_string, {}) == '827b468ee4155d49dc12bda9be7ae21b4c2cdfcc'
+        assert get_hash([1, '2', 'three'], test_trace_string, {'a': 'A'}) == 'be8756e803916483a52a930431f989d938c33fbb'
+        assert get_hash([1, '2', 'three'], test_trace_string, {'a': ''}) == 'a1f21358d577ee458b35ed9543ec8772ef171f5a'
+        assert get_hash([1, '2', 'three'], test_trace_string, {'a': None}) == '4938719f4707b4e3e8cdf9fb5c2a8a72d8ef3df2'
+        assert get_hash([1, '2', 'three'], test_trace_string, {'a': 'A', 'b': 111}) == 'd8b2cebf5b9ea0f646772e8d796110a8488402e1'
+        assert get_hash([1, '2', 'three'], test_trace_string, {'a': 'A', 'b': 'B', 'c': 0.00001}) == '02a2935a139d74cdae967e14023046b1f0c78a9f'
+
+        assert get_hash([1, '2', 'three', [4]], test_trace_string, {}) == '59ebdee80725eebddabb91a34f69df5db03f75ac'
+        assert get_hash([1, '2', 'three', [4]], test_trace_string, {'a': 'A'}) == '0ec096116fb0be1aeca09a3b49ff8c873c697bf6'
+        assert get_hash([1, '2', 'three', [4]], test_trace_string, {'a': ''}) == 'de20ee14a351f21fad0bd3b533285da4f04a8f33'
+        assert get_hash([1, '2', 'three', [4]], test_trace_string, {'a': None}) == '0e1148e63e0129406d1fcbc3f969b5af444562ff'
+        assert get_hash([1, '2', 'three', [4]], test_trace_string, {'a': 'A', 'b': None, 'c': 'C'}) == '140b05129f201e8b0e8236938e5fab401bd8b88b'
+        assert get_hash([1, '2', 'three', [4]], test_trace_string, {'a': 'A', 'b': 'B', 'c': []})
+
+
     @patch('caliendo.counter.get_from_trace', rvalue=1)
     def test_args_are_ignored(self):
         args = (1, 2, 3, 4)

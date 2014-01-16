@@ -50,7 +50,7 @@ def get_hash(args, trace_string, kwargs, ignore=UNDEFINED):
 
     return sha1((str(util.serialize_args(args)) + "\n" +
                               str(counter_value) + "\n" +
-                              str(util.serialize_args(kwargs)) + "\n" +
+                              str(util.serialize_item(kwargs)) + "\n" +
                               trace_string + "\n" )).hexdigest()
 
 class LazyBones:
