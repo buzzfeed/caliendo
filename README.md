@@ -2,6 +2,12 @@
 
 ## About
 
+.. image:: https://pypip.in/v/caliendo/badge.png
+   :target: https://pypi.python.org/pypi/caliendo
+
+.. image:: https://pypip.in/d/caliendo/badge.png
+   :target: https://pypi.python.org/pypi/caliendo
+
 Caliendo is a very simple interface for mocking APIs. It allows you to skip
 (potentially heavy) calls to your database or remote resources by storing sets
 of calls and caching responses based on the sequence of execution as well as
