@@ -151,7 +151,7 @@ class  CaliendoTestCase(unittest.TestCase):
             @patch('test.api.services.biz.find', callback=biz_find_called)
             @patch('test.api.services.foo.find', callback=foo_find_called)
             def test():
-                foobarfoobizzes = foobarfoobiz.find(10)
+                foobarfoobiz.find(10)
 
             try:
                 test()
@@ -390,9 +390,8 @@ class  CaliendoTestCase(unittest.TestCase):
         o = CallOnceEver()
         test = self
 
-
         def test(fh):
-            op = Facade( o )
+            Facade( o )
             result = o.update()
             fh.write(str(result == 1))
             fh.close()
@@ -927,31 +926,31 @@ class  CaliendoTestCase(unittest.TestCase):
     @patch('test.api.services.biz.find')
     @patch('test.api.services.foo.find')
     def test_multiple_overlapping_services_a(self):
-        foobarfoobizzes = foobarfoobiz.find(10)
+        foobarfoobiz.find(10)
 
     @patch('test.api.services.bar.find')
     @patch('test.api.services.baz.find')
     @patch('test.api.services.biz.find')
     @patch('test.api.services.foo.find')
     def test_multiple_overlapping_services_b(self):
-        foobarfoobazzes = foobarfoobaz.find(10)
-        foobarfoobizzes = foobarfoobiz.find(10)
-        foobars = foobar.find(10)
-        foobarfoobazzes = foobarfoobaz.find(10)
+        foobarfoobaz.find(10)
+        foobarfoobiz.find(10)
+        foobar.find(10)
+        foobarfoobaz.find(10)
 
     @patch('test.api.services.bar.find')
     @patch('test.api.services.baz.find')
     @patch('test.api.services.biz.find')
     @patch('test.api.services.foo.find')
     def test_multiple_overlapping_services_c(self):
-        foobizs = foobiz.find(10)
-        foobars = foobar.find(10)
+        foobiz.find(10)
+        foobar.find(10)
 
     @patch('test.api.services.bar.find', side_effect=Exception("Blam"))
     def test_side_effect_raises_exceptions(self):
         try:
-            foobizs = foobiz.find(10)
-            foobars = foobar.find(10)
+            foobiz.find(10)
+            foobar.find(10)
         except:
             assert sys.exc_info()[1].message == 'Blam'
 
@@ -972,6 +971,50 @@ class  CaliendoTestCase(unittest.TestCase):
         mc = MyClass()
         bar = mc.foo()
         assert bar == 'bar', "Got '%s' expected 'bar'" % bar
+
+    def test_unpatching_instance_method_with_side_effect_as_exception(self):
+        @patch('test.api.myclass.MyClass.foo', side_effect=Exception('Boom!'))
+        def test_exception_side_effect():
+            try:
+                MyClass().foo()
+            except Exception as e:
+                assert e.message == 'Boom!'
+
+        @patch('test.api.myclass.MyClass.foo')
+        def test_unpatched():
+            foo = MyClass().foo()
+            assert foo == 'foo', foo  # should not execute side effect
+
+        test_exception_side_effect()
+        test_unpatched()
+
+    def test_unpatching_instance_method_with_side_effect_as_callable(self):
+        @patch('test.api.myclass.MyClass.foo', side_effect=lambda s: 'side effect')
+        def test_callback_side_effect():
+            foo = MyClass().foo()
+            assert foo == 'side effect', foo
+
+        @patch('test.api.myclass.MyClass.foo')
+        def test_unpatched():
+            foo = MyClass().foo()
+            assert foo == 'foo', foo  # should not execute side effect
+
+        test_callback_side_effect()
+        test_unpatched()
+
+    def test_unpatching_instance_method_with_return_value(self):
+        @patch('test.api.myclass.MyClass.foo', rvalue='bar')
+        def test_return_value_effect():
+            foo = MyClass().foo()
+            assert foo == 'bar', foo
+
+        @patch('test.api.myclass.MyClass.foo')
+        def test_unpatched():
+            foo = MyClass().foo()
+            assert foo == 'foo', foo  # should not execute side effect
+
+        test_return_value_effect()
+        test_unpatched()
 
     def test_patching_instance_methods_with_cache_and_binary_garbage(self):
         def mixed(x, y, z=1):
