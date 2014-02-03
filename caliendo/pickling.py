@@ -110,7 +110,7 @@ def truncate_attr_at_path( obj, path ):
             if not target: return
         except: return
         if isinstance( target, ( tuple, list ) ): target = list(target) # Tuples are immutable. Need to be able to manipulate.
-    
+
     try:
         del_statement = "del target." + str( last_attr )
         eval( del_statement )
