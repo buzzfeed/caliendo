@@ -1,5 +1,4 @@
 import os
-import sys
 import cPickle as pickle
 import dill
 
@@ -57,7 +56,7 @@ def insert_io( args ):
 
     try:
         with open(filepath, "w+") as f:
-            pickle.dump(args, f)
+            pickle.dump(args, f, pickle.HIGHEST_PROTOCOL)
     except IOError:
         if not os.environ.get('CALIENDO_TEST_SUITE', None):
             logger.warning( "Caliendo failed to open " + filepath + ", check file permissions." )
@@ -144,7 +143,7 @@ def insert_expected_value(packet):
             pickle.dump({'call_hash': hash,
                          'expected_value': ev,
                          'packet_num': packet_num},
-                         f)
+                         f, pickle.HIGHEST_PROTOCOL)
     except IOError:
         if not os.environ.get('CALIENDO_TEST_SUITE', None):
             logger.warning("Failed to open %s" % hash)
@@ -162,7 +161,7 @@ def insert_test( hash, random, seq ):
     try:
         with open(os.path.join(SEED_DIRECTORY, "%s_%s" % (hash, 0)), "w+") as f:
             record_used('seeds', hash)
-            pickle.dump({'hash': hash, 'random': random, 'seq': seq }, f)
+            pickle.dump({'hash': hash, 'random': random, 'seq': seq }, f, pickle.HIGHEST_PROTOCOL)
     except IOError:
         if not os.environ.get('CALIENDO_TEST_SUITE', None):
             logger.warning( "Failed to open %s" % hash)
