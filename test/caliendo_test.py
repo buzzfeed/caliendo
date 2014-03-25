@@ -1200,7 +1200,7 @@ class  CaliendoTestCase(unittest.TestCase):
                 test(i * 0.1)
 
         with open(myfile.name) as f:
-            self.assertEquals(f.read(), '3')
+            self.assertEquals(f.read(), '2')
 
     def test_load_and_save_stack(self):
         cs = CallStack(self.test_load_and_save_stack)

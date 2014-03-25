@@ -2,7 +2,7 @@ from __future__ import absolute_import
 import sys
 
 import os
-import cPickle as pickle
+import dill as pickle
 
 from caliendo.logger import get_logger
 
