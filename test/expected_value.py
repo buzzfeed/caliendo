@@ -1,18 +1,13 @@
 import unittest
-import sys
 import os
 
 os.environ['USE_CALIENDO'] = 'True'
 
 import caliendo
 
-from caliendo.db.flatfiles import CACHE_DIRECTORY 
-from caliendo.db.flatfiles import SEED_DIRECTORY 
-from caliendo.db.flatfiles import EV_DIRECTORY 
-from caliendo.db.flatfiles import LOG_FILEPATH 
+from caliendo.db.flatfiles import LOG_FILEPATH
 from caliendo.db.flatfiles import delete_from_directory_by_hashes
 from caliendo.db.flatfiles import read_all
-from caliendo.db.flatfiles import read_used
 from caliendo.db.flatfiles import purge
 
 from caliendo.facade import patch
@@ -30,6 +25,7 @@ class TestsWithShell(unittest.TestCase):
 
     def setUp(self):
         caliendo.util.register_suite()
+        caliendo.util.recache()
 
     def test_expected_value_prompt(self):
         assert expected_value.is_equal_to(2) 
@@ -45,9 +41,9 @@ class TestsWithShell(unittest.TestCase):
     @patch('api.services.foo.find')
     def test_purge(self):
  
-      delete_from_directory_by_hashes(CACHE_DIRECTORY, '*')
-      delete_from_directory_by_hashes(EV_DIRECTORY, '*')
-      delete_from_directory_by_hashes(SEED_DIRECTORY, '*')
+      delete_from_directory_by_hashes('cache', '*')
+      delete_from_directory_by_hashes('evs', '*')
+      delete_from_directory_by_hashes('seeds', '*')
 
       all_hashes = read_all()
       assert len(all_hashes['evs']) == 0

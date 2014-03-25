@@ -12,7 +12,7 @@ from caliendo import config
 from caliendo import call_descriptor
 from caliendo import counter
 from caliendo import prompt
-from caliendo import UNDEFINED
+from caliendo.__init__ import UNDEFINED
 from caliendo.hooks import Hook
 
 USE_CALIENDO = config.should_use_caliendo()

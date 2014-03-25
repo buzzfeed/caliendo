@@ -6,7 +6,7 @@ from mock import _get_target
 
 import caliendo
 
-from caliendo import UNDEFINED
+from caliendo.__init__ import UNDEFINED
 from caliendo import Parameters
 
 from caliendo.facade import cache

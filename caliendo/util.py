@@ -136,55 +136,6 @@ def random(*args):
       current_frame = current_frame.f_back
     return counter.get_from_trace(trace_string)
 
-def attempt_drop( ):
-    """
-    Attempts to drop the tables relevant to caliendo's operation. This causes the entire cache to be cleared.
-    """
-    try:
-        drop = ["DROP TABLE test_io;", "DROP TABLE test_seed;"]
-        conn = connection.connect()
-        if not conn:
-            raise Exception( "Caliendo could not connect to the database" )
-        curs = conn.cursor()
-        for d in drop:
-            curs.execute( d )
-        conn.close()
-    except:
-        pass # Fail gracefully if connection is not defined
-
-def create_tables( ):
-    """
-    Attempts to set up the tables for Caliendo to run properly.
-    """
-    create_test_io = """
-            CREATE TABLE test_io (
-              hash VARCHAR( 40 ) NOT NULL,
-              stack TEXT,
-              methodname VARCHAR( 255 ),
-              args BLOB,
-              returnval BLOB,
-              packet_num INT
-            )
-             """
-
-    create_test_seeds = """
-            CREATE TABLE test_seed (
-                hash VARCHAR( 40 ) NOT NULL PRIMARY KEY,
-                random BIGINT NOT NULL,
-                seq BIGINT NOT NULL
-            )
-            """
-    try:
-        conn = connection.connect()
-        curs = conn.cursor()
-        for sql in [ create_test_io, create_test_seeds ]:
-            try:
-                curs.execute( sql )
-            except Exception:
-                pass
-    except Exception:
-      pass
-
 def recache( methodname=None, filename=None ):
     """
     Deletes entries corresponding to methodname in filename. If no arguments are passed it recaches the entire table.
