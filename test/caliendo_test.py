@@ -11,7 +11,8 @@ import os
 os.environ['USE_CALIENDO'] = 'True'
 
 from subprocess import PIPE
-from caliendo.db.flatfiles import STACK_DIRECTORY, save_stack, load_stack, delete_stack
+from caliendo.db.flatfiles import save_stack, load_stack, delete_stack
+from caliendo.db import flatfiles
 from caliendo.call_descriptor import CallDescriptor, fetch
 from caliendo.facade import patch, Facade, Wrapper, get_hash, cache
 from caliendo.hooks import CallStack, Hook
@@ -138,11 +139,7 @@ def foo_find_called(cd):
 class  CaliendoTestCase(unittest.TestCase):
     def setUp(self):
         caliendo.util.register_suite()
-        stackfiles = os.listdir(STACK_DIRECTORY)
-        for f in stackfiles:
-            filepath = os.path.join(STACK_DIRECTORY, f)
-            if os.path.exists(filepath):
-                os.unlink(filepath)
+        flatfiles.CACHE_['stacks'] = {}
 
     def test_callback_in_patch(self):
 
@@ -1015,7 +1012,6 @@ class  CaliendoTestCase(unittest.TestCase):
 
         test_return_value_effect()
         test_unpatched()
-
     def test_patching_instance_methods_with_cache_and_binary_garbage(self):
         def mixed(x, y, z=1):
             CallOnceEver().update()
@@ -1187,10 +1183,8 @@ class  CaliendoTestCase(unittest.TestCase):
         def test(waittime):
             time.sleep(waittime)
             cs = CallStack(gkeyword)
-            cache(gkeyword, kwargs={ 'x': 1, 'y': 2, 'z': 3 }, call_stack=cs, callback=callback)
+            val = cache(gkeyword, kwargs={ 'x': 1, 'y': 2, 'z': 3 }, call_stack=cs, callback=callback)
             cs.save()
-
-
             os._exit(0)
 
         for i in range(3):
@@ -1226,6 +1220,7 @@ class  CaliendoTestCase(unittest.TestCase):
         assert len(loaded.calls) == 0
         assert loaded.hooks['fake-hash2'].hash == 'fake-hash2'
         assert loaded.hooks['fake-hash3'].hash == 'fake-hash3'
+
 
 if __name__ == '__main__':
     unittest.main()

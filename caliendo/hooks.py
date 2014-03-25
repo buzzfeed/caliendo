@@ -2,7 +2,9 @@ import os
 import sys
 import inspect
 
-from caliendo import UNDEFINED
+from caliendo.__init__ import UNDEFINED
+
+from caliendo.call_descriptor import fetch
 
 from caliendo.db.flatfiles import save_stack
 from caliendo.db.flatfiles import load_stack

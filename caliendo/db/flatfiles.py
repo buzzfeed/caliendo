@@ -1,6 +1,6 @@
 import os
 import cPickle as pickle
-import dill
+#import dill
 
 from caliendo.logger import get_logger
 
@@ -8,20 +8,14 @@ logger = get_logger(__name__)
 
 DEFAULT_ROOT = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', '..')
 ROOT = os.environ.get('CALIENDO_CACHE_PREFIX', DEFAULT_ROOT)
-CACHE_DIRECTORY = os.path.join(ROOT, 'cache')
-SEED_DIRECTORY = os.path.join(ROOT, 'seeds')
-EV_DIRECTORY = os.path.join(ROOT, 'evs')
-STACK_DIRECTORY = os.path.join(ROOT, 'stacks')
+CACHE = os.path.join(ROOT, 'cache')
+CACHE_ = None
+
+LOCKFILE = os.path.join(ROOT, 'lock')
 LOG_FILEPATH = os.path.join(ROOT, 'used')
 
-if not os.path.exists( CACHE_DIRECTORY ):
-    os.makedirs(CACHE_DIRECTORY)
-if not os.path.exists( SEED_DIRECTORY ):
-    os.makedirs(SEED_DIRECTORY)
-if not os.path.exists(EV_DIRECTORY):
-    os.makedirs(EV_DIRECTORY)
-if not os.path.exists(STACK_DIRECTORY):
-    os.makedirs(STACK_DIRECTORY)
+def callback2(*args, **kwargs):
+    pass
 
 def record_used(kind, hash):
     """
@@ -47,46 +41,27 @@ def insert_io( args ):
 
     :rtype None:
     """
+    global CACHE_
     hash = args['hash']
 
     record_used('cache', hash)
 
     packet_num = args['packet_num']
-    filepath = os.path.join(CACHE_DIRECTORY, "%s_%s" % (hash, packet_num))
 
-    try:
-        with open(filepath, "w+") as f:
-            pickle.dump(args, f, pickle.HIGHEST_PROTOCOL)
-    except IOError:
-        if not os.environ.get('CALIENDO_TEST_SUITE', None):
-            logger.warning( "Caliendo failed to open " + filepath + ", check file permissions." )
+    if hash not in CACHE_['cache']:
+        CACHE_['cache'][hash] = {}
 
-def get_packets(directory):
-    file_list = os.listdir(directory)
+    CACHE_['cache'][hash][packet_num] = args
+    write_out()
 
+def get_packets(cache_type):
+    load_cache(True)
+    global CACHE_
     packets   = {}
-    for filename in file_list:
-        hash, packet_num = tuple(filename.split('_'))
-        if hash in packets:
-            packets[hash] += 1
-        else:
-            packets[hash] = 1
-
+    all_cached = CACHE_[cache_type]
+    for hash, all_packets in all_cached:
+        packets[hash] = len(all_packets)
     return packets
-
-def get_filenames_for_hash(directory, hash):
-    packets = get_packets(directory)
-    paths = []
-
-    if hash not in packets:
-        return []
-
-    for i in range(packets[hash]):
-      filename = "%s_%s" % (hash, i)
-      path = os.path.abspath(os.path.join(directory, filename))
-      paths.append(path)
-
-    return paths
 
 def select_io( hash ):
     """
@@ -96,57 +71,34 @@ def select_io( hash ):
 
     :rtype list(tuple( hash, stack, methodname, returnval, args, packet_num )):
     """
+    load_cache(True)
+    global CACHE_
     res = []
-    if not hash:
-        return res
-
     record_used('cache', hash)
-
-    for packet in get_filenames_for_hash(CACHE_DIRECTORY, hash):
-        try:
-            with open(packet, "rb") as f:
-                d = pickle.load(f)
-                res += [(d['hash'], d['stack'], d['methodname'], d['returnval'], d['args'], d['packet_num'])]
-        except IOError:
-            if not os.environ.get('CALIENDO_TEST_SUITE', None):
-                logger.warning( "Caliendo failed to open " + packet + " for reading." )
-
+    for d in CACHE_['cache'].get(hash, {}).values():
+        res += [(d['hash'], d['stack'], d['methodname'], d['returnval'], d['args'], d['packet_num'])]
     return res
 
 def select_expected_value(hash):
+    load_cache(True)
+    global CACHE_
     if not hash:
         return []
     res = []
     record_used('evs', hash)
-    for packet in get_filenames_for_hash(EV_DIRECTORY, hash):
-        try:
-            with open(packet, "rb") as f:
-                fr = pickle.load(f)
-                res += [(fr['call_hash'], fr['expected_value'], fr['packet_num'])]
-        except IOError:
-            if not os.environ.get('CALIENDO_TEST_SUITE', None):
-                logger.warning("Failed to open %s" % packet)
+    for fr in CACHE_.get('evs', {}).get(hash, []):
+        res += [(fr['call_hash'], fr['expected_value'], fr['packet_num'])]
     return res
 
 def delete_expected_value(hash):
     pass
 
 def insert_expected_value(packet):
+    global CACHE_
     hash = packet['call_hash']
-    packet_num = packet['packet_num']
-    ev = packet['expected_value']
     record_used('evs', hash)
-    try:
-        filename = "%s_%s" % (hash, packet_num)
-        filepath = os.path.join(EV_DIRECTORY, filename)
-        with open(filepath, "w+") as f:
-            pickle.dump({'call_hash': hash,
-                         'expected_value': ev,
-                         'packet_num': packet_num},
-                         f, pickle.HIGHEST_PROTOCOL)
-    except IOError:
-        if not os.environ.get('CALIENDO_TEST_SUITE', None):
-            logger.warning("Failed to open %s" % hash)
+    CACHE_['evs'][hash] = packet
+    write_out()
 
 def insert_test( hash, random, seq ):
     """
@@ -158,13 +110,10 @@ def insert_test( hash, random, seq ):
 
     :rtype None:
     """
-    try:
-        with open(os.path.join(SEED_DIRECTORY, "%s_%s" % (hash, 0)), "w+") as f:
-            record_used('seeds', hash)
-            pickle.dump({'hash': hash, 'random': random, 'seq': seq }, f, pickle.HIGHEST_PROTOCOL)
-    except IOError:
-        if not os.environ.get('CALIENDO_TEST_SUITE', None):
-            logger.warning( "Failed to open %s" % hash)
+    global CACHE_
+    record_used('seeds', hash)
+    CACHE_['seeds'][hash] = {'hash': hash, 'random': random, 'seq': seq}
+    write_out()
 
 def select_test( hash ):
     """
@@ -174,21 +123,15 @@ def select_test( hash ):
 
     :rtype [tuple(<string>, <string>)]:
     """
-    filepath = os.path.join(SEED_DIRECTORY, "%s_%s" % (hash, 0))
-    try:
-        f = None
-        res = None
-        record_used('seeds', hash)
-        with open(filepath, "rb") as f:
-            d = pickle.load(f)
-            res = ( d['random'], d['seq'] )
-    except IOError:
-        if not os.environ.get('CALIENDO_TEST_SUITE', None):
-            logger.warning( "Caliendo failed to read " + filepath )
+    load_cache(True)
+    global CACHE_
+    record_used('seeds', hash)
+    d = CACHE_['seeds'].get(hash, {})
 
-    if res:
-        return [res]
-    return None
+    if d:
+        return [( d.get('random', None), d.get('seq', None) )]
+    else:
+        return None
 
 def delete_io( hash ):
     """
@@ -198,16 +141,13 @@ def delete_io( hash ):
 
     :rtype int: The number of records deleted
     """
-    res = 0
+    global CACHE_
     record_used('cache', hash)
-    for packet in get_filenames_for_hash(CACHE_DIRECTORY, hash):
-        try:
-            os.remove(packet)
-            res = res + 1
-        except:
-            if not os.environ.get('CALIENDO_TEST_SUITE', None):
-                logger.warning( "Failed to remove file: " + packet )
-    return res
+    num_deleted = len(CACHE_['cache'].get(hash, []))
+    if hash in CACHE_['cache']:
+        del CACHE_['cache'][hash]
+    return num_deleted
+    write_out()
 
 def get_unique_hashes():
     """
@@ -215,24 +155,25 @@ def get_unique_hashes():
 
     :rtype list(<string>)
     """
-    return list( set( [ filename.split("_")[0] for filename in os.listdir(CACHE_DIRECTORY) ] ) )
+    load_cache(True)
+    global CACHE_
+    return CACHE_['cache'].keys()
 
-def delete_from_directory_by_hashes(directory, hashes):
+def delete_from_directory_by_hashes(cache_type, hashes):
     """
     Deletes all cache files corresponding to a list of hashes from a directory
 
-    :param str directory: The directory to delete the files from
+    :param str directory: The type of cache to delete files for.
     :param list(str) hashes: The hashes to delete the files for
 
     """
-    files = os.listdir(directory)
+    global CACHE_
     if hashes == '*':
-        for f in files:
-            os.unlink(os.path.join(directory, f))
-    for f in files:
-        for h in hashes:
-            if h in f:
-                os.unlink(os.path.join(directory, f))
+        del CACHE_[cache_type]
+    for h in hashes:
+        if h in CACHE_[cache_type]:
+            del CACHE_[cache_type][h]
+    write_out()
 
 def read_used():
     """
@@ -259,9 +200,11 @@ def read_all():
     :rtype: dict
     :returns: A dictionary of sets of hashes by type
     """
-    evs = set(get_packets(EV_DIRECTORY).keys())
-    cache = set(get_packets(CACHE_DIRECTORY).keys())
-    seeds = set(get_packets(SEED_DIRECTORY).keys())
+    global CACHE_
+    load_cache(True)
+    evs = CACHE_['evs'].keys()
+    cache = CACHE_['cache'].keys()
+    seeds = CACHE_['seeds'].keys()
     return {"evs"  : evs,
             "cache": cache,
             "seeds": seeds}
@@ -284,14 +227,10 @@ def purge():
 
     for kind, hashes in used_hashes.items():
         to_remove = all_hashes[kind].difference(hashes)
-        if kind == 'evs':
-            delete_from_directory_by_hashes(EV_DIRECTORY, to_remove)
-        elif kind == 'cache':
-            delete_from_directory_by_hashes(CACHE_DIRECTORY, to_remove)
-        elif kind == 'seeds':
-            delete_from_directory_by_hashes(SEED_DIRECTORY, to_remove)
+        delete_from_directory_by_hashes(kind, to_remove)
 
     reset_used()
+    write_out()
 
 def save_stack(stack):
     """
@@ -300,9 +239,9 @@ def save_stack(stack):
     :param caliendo.hooks.CallStack stack: The stack to save.
 
     """
-    path = os.path.join(STACK_DIRECTORY, '%s.%s' % (stack.module, stack.caller))
-    with open(path, 'w+') as f:
-        dill.dump(stack, f)
+    global CACHE_
+    CACHE_['stacks']["{0}.{1}".format(stack.module, stack.caller)] = stack
+    write_out()
 
 def load_stack(stack):
     """
@@ -314,11 +253,11 @@ def load_stack(stack):
     :rtype: caliendo.hooks.CallStack
 
     """
-    path = os.path.join(STACK_DIRECTORY, '%s.%s' % (stack.module, stack.caller))
-    if os.path.exists(path):
-        with open(path, 'rb') as f:
-            return dill.load(f)
-    return None
+    global CACHE_
+    load_cache(True)
+    key = "{0}.{1}".format(stack.module, stack.caller)
+    if key in CACHE_['stacks']:
+        return CACHE_['stacks'][key]
 
 def delete_stack(stack):
     """
@@ -326,6 +265,39 @@ def delete_stack(stack):
 
     :param caliendo.hooks.CallStack stack: The stack to delete.
     """
-    path = os.path.join(STACK_DIRECTORY, '%s.%s' % (stack.module, stack.caller))
-    if os.path.exists(path):
-        os.unlink(path)
+    global CACHE_
+    key = "{0}.{1}".format(stack.module, stack.caller)
+    if key in CACHE_['stacks']:
+        del CACHE_['stacks'][key]
+        write_out()
+
+def write_out():
+    global CACHE_
+    import time
+    while os.path.exists(LOCKFILE):
+        time.sleep(0.01)
+
+    with open(LOCKFILE, 'w+') as lock:
+        with open(CACHE, 'w+') as f:
+            pickle.dump(CACHE_, f)
+
+    os.unlink(LOCKFILE)
+
+def load_cache(reload=False):
+    global CACHE_
+    import sys
+    if os.path.exists(CACHE):
+        try:
+            with open(CACHE, 'rb') as f:
+                CACHE_ = pickle.load(f)
+        except Exception, e:
+            import traceback
+            print traceback.format_exc()
+    else:
+        CACHE_ = {'seeds': {},
+                  'evs': {},
+                  'stacks': {},
+                  'cache': {}}
+
+
+load_cache()
