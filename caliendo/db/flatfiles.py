@@ -1,6 +1,8 @@
+from __future__ import absolute_import
+import sys
+
 import os
 import cPickle as pickle
-#import dill
 
 from caliendo.logger import get_logger
 
@@ -11,11 +13,10 @@ ROOT = os.environ.get('CALIENDO_CACHE_PREFIX', DEFAULT_ROOT)
 CACHE = os.path.join(ROOT, 'cache')
 CACHE_ = None
 
+PPROT = pickle.HIGHEST_PROTOCOL
+
 LOCKFILE = os.path.join(ROOT, 'lock')
 LOG_FILEPATH = os.path.join(ROOT, 'used')
-
-def callback2(*args, **kwargs):
-    pass
 
 def record_used(kind, hash):
     """
@@ -33,26 +34,6 @@ def record_used(kind, hash):
 
     log.writelines(["%s...%s\n" % (kind, hash)])
 
-def insert_io( args ):
-    """
-    Inserts a method's i/o into the datastore
-
-    :param dict args: A dictionary of the hash, stack, packet_num, methodname, args, and returnval
-
-    :rtype None:
-    """
-    global CACHE_
-    hash = args['hash']
-
-    record_used('cache', hash)
-
-    packet_num = args['packet_num']
-
-    if hash not in CACHE_['cache']:
-        CACHE_['cache'][hash] = {}
-
-    CACHE_['cache'][hash][packet_num] = args
-    write_out()
 
 def get_packets(cache_type):
     load_cache(True)
@@ -62,6 +43,41 @@ def get_packets(cache_type):
     for hash, all_packets in all_cached:
         packets[hash] = len(all_packets)
     return packets
+
+def delete_io( hash ):
+    """
+    Deletes records associated with a particular hash
+
+    :param str hash: The hash
+
+    :rtype int: The number of records deleted
+    """
+    global CACHE_
+    load_cache(True)
+    record_used('cache', hash)
+    num_deleted = len(CACHE_['cache'].get(hash, []))
+    if hash in CACHE_['cache']:
+        del CACHE_['cache'][hash]
+    write_out()
+    return num_deleted
+
+def insert_io( args ):
+    """
+    Inserts a method's i/o into the datastore
+
+    :param dict args: A dictionary of the hash, stack, packet_num, methodname, args, and returnval
+
+    :rtype None:
+    """
+    global CACHE_
+    load_cache()
+    hash = args['hash']
+    record_used('cache', hash)
+    packet_num = args['packet_num']
+    if hash not in CACHE_['cache']:
+        CACHE_['cache'][hash] = {}
+    CACHE_['cache'][hash][packet_num] = pickle.dumps(args, PPROT)
+    write_out()
 
 def select_io( hash ):
     """
@@ -76,6 +92,7 @@ def select_io( hash ):
     res = []
     record_used('cache', hash)
     for d in CACHE_['cache'].get(hash, {}).values():
+        d = pickle.loads(d)
         res += [(d['hash'], d['stack'], d['methodname'], d['returnval'], d['args'], d['packet_num'])]
     return res
 
@@ -87,6 +104,7 @@ def select_expected_value(hash):
     res = []
     record_used('evs', hash)
     for fr in CACHE_.get('evs', {}).get(hash, []):
+        fr = pickle.loads(fr)
         res += [(fr['call_hash'], fr['expected_value'], fr['packet_num'])]
     return res
 
@@ -95,9 +113,10 @@ def delete_expected_value(hash):
 
 def insert_expected_value(packet):
     global CACHE_
+    load_cache()
     hash = packet['call_hash']
     record_used('evs', hash)
-    CACHE_['evs'][hash] = packet
+    CACHE_['evs'][hash] = pickle.dumps(packet, PPROT)
     write_out()
 
 def insert_test( hash, random, seq ):
@@ -111,6 +130,7 @@ def insert_test( hash, random, seq ):
     :rtype None:
     """
     global CACHE_
+    load_cache()
     record_used('seeds', hash)
     CACHE_['seeds'][hash] = {'hash': hash, 'random': random, 'seq': seq}
     write_out()
@@ -133,21 +153,6 @@ def select_test( hash ):
     else:
         return None
 
-def delete_io( hash ):
-    """
-    Deletes records associated with a particular hash
-
-    :param str hash: The hash
-
-    :rtype int: The number of records deleted
-    """
-    global CACHE_
-    record_used('cache', hash)
-    num_deleted = len(CACHE_['cache'].get(hash, []))
-    if hash in CACHE_['cache']:
-        del CACHE_['cache'][hash]
-    return num_deleted
-    write_out()
 
 def get_unique_hashes():
     """
@@ -169,7 +174,7 @@ def delete_from_directory_by_hashes(cache_type, hashes):
     """
     global CACHE_
     if hashes == '*':
-        del CACHE_[cache_type]
+        CACHE_[cache_type] = {}
     for h in hashes:
         if h in CACHE_[cache_type]:
             del CACHE_[cache_type][h]
@@ -224,9 +229,9 @@ def purge():
     """
     all_hashes = read_all()
     used_hashes = read_used()
-
     for kind, hashes in used_hashes.items():
-        to_remove = all_hashes[kind].difference(hashes)
+        hashes = set(hashes)
+        to_remove = set(all_hashes[kind]).difference(hashes)
         delete_from_directory_by_hashes(kind, to_remove)
 
     reset_used()
@@ -240,7 +245,8 @@ def save_stack(stack):
 
     """
     global CACHE_
-    CACHE_['stacks']["{0}.{1}".format(stack.module, stack.caller)] = stack
+    serialized = pickle.dumps(stack, PPROT)
+    CACHE_['stacks']["{0}.{1}".format(stack.module, stack.caller)] = serialized
     write_out()
 
 def load_stack(stack):
@@ -257,7 +263,7 @@ def load_stack(stack):
     load_cache(True)
     key = "{0}.{1}".format(stack.module, stack.caller)
     if key in CACHE_['stacks']:
-        return CACHE_['stacks'][key]
+        return pickle.loads(CACHE_['stacks'][key])
 
 def delete_stack(stack):
     """
@@ -274,25 +280,24 @@ def delete_stack(stack):
 def write_out():
     global CACHE_
     import time
-    while os.path.exists(LOCKFILE):
-        time.sleep(0.01)
+    try:
+        while os.path.exists(LOCKFILE):
+            time.sleep(0.01)
 
-    with open(LOCKFILE, 'w+') as lock:
-        with open(CACHE, 'w+') as f:
-            pickle.dump(CACHE_, f)
-
-    os.unlink(LOCKFILE)
+        with open(LOCKFILE, 'w+') as lock:
+            with open(CACHE, 'w+') as f:
+                pickle.dump(CACHE_, f, pickle.HIGHEST_PROTOCOL)
+    finally:
+        if os.path.exists(LOCKFILE):
+            os.unlink(LOCKFILE)
+        load_cache(True)
 
 def load_cache(reload=False):
     global CACHE_
-    import sys
+
     if os.path.exists(CACHE):
-        try:
-            with open(CACHE, 'rb') as f:
-                CACHE_ = pickle.load(f)
-        except Exception, e:
-            import traceback
-            print traceback.format_exc()
+        with open(CACHE, 'rb') as f:
+            CACHE_ = pickle.load(f)
     else:
         CACHE_ = {'seeds': {},
                   'evs': {},

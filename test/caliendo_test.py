@@ -4,7 +4,9 @@ import weakref
 import unittest
 import subprocess
 import hashlib
-import pickle
+import inspect
+import dill as pickle
+import types
 import sys
 import os
 
@@ -139,6 +141,7 @@ def foo_find_called(cd):
 class  CaliendoTestCase(unittest.TestCase):
     def setUp(self):
         caliendo.util.register_suite()
+        caliendo.util.recache()
         flatfiles.CACHE_['stacks'] = {}
 
     def test_callback_in_patch(self):
@@ -418,7 +421,6 @@ class  CaliendoTestCase(unittest.TestCase):
             os.remove(output.name)
 
         self.assertEqual(result, expected)
-
     def test_recache(self):
         mtc = TestC( )
         mtc_f = Facade( mtc )
@@ -1119,7 +1121,8 @@ class  CaliendoTestCase(unittest.TestCase):
 
     def test_tests_with_shell(self):
         shell_tests = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'expected_value.py')
-        p = subprocess.Popen(" ".join([sys.executable, shell_tests]), stdout=PIPE, stdin=PIPE, stderr=PIPE, shell=True)
+        command = " ".join([sys.executable, shell_tests])
+        p = subprocess.Popen(command, stdout=PIPE, stdin=PIPE, stderr=PIPE, shell=True)
         comm = p.communicate()
         assert comm[0] == '>>> >>> >>> >>> >>> >>> >>> >>> >>> >>> >>> >>> ', "START:" + comm[0] + ":END"
 
@@ -1180,6 +1183,8 @@ class  CaliendoTestCase(unittest.TestCase):
         assert e != d
 
     def test_call_hooks(self):
+        with open(myfile.name, 'w+') as fp:
+            fp.write('0')
         def test(waittime):
             time.sleep(waittime)
             cs = CallStack(gkeyword)
@@ -1195,7 +1200,7 @@ class  CaliendoTestCase(unittest.TestCase):
                 test(i * 0.1)
 
         with open(myfile.name) as f:
-            self.assertEquals(f.read(), '2')
+            self.assertEquals(f.read(), '3')
 
     def test_load_and_save_stack(self):
         cs = CallStack(self.test_load_and_save_stack)
