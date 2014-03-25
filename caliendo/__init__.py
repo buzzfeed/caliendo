@@ -1,6 +1,6 @@
 import os
 
-USE_CALIENDO = True if os.environ.get('USE_CALIENDO') == 'True' else False #should_use_caliendo()
+USE_CALIENDO = True if os.environ.get('USE_CALIENDO') == 'True' else False 
 
 class UNDEFINED(object):
     pass

@@ -41,7 +41,6 @@ class  ReplayTestCase(unittest.TestCase):
             pass
         with open(CACHED_METHOD_FILE, 'w+') as f:
             pass
-    """
     def test_replay(self):
         def do_it(i):
             @replay('test.api.callback.callback_for_method')
@@ -86,7 +85,6 @@ class  ReplayTestCase(unittest.TestCase):
 
         with open(CACHED_METHOD_FILE, 'rb') as f:
             assert f.read() == '.'
-    """
 
 if __name__ == '__main__':
     unittest.main()
