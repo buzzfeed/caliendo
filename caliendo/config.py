@@ -1,4 +1,3 @@
-import sys
 import os
 
 def should_use_caliendo( ):
