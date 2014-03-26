@@ -103,7 +103,9 @@ def select_expected_value(hash):
         return []
     res = []
     record_used('evs', hash)
-    for fr in CACHE_.get('evs', {}).get(hash, []):
+    evs = CACHE_.get('evs', {})
+    values_at_hash = evs.get(hash, [])
+    for fr in values_at_hash:
         fr = pickle.loads(fr)
         res += [(fr['call_hash'], fr['expected_value'], fr['packet_num'])]
     return res
@@ -116,7 +118,9 @@ def insert_expected_value(packet):
     load_cache()
     hash = packet['call_hash']
     record_used('evs', hash)
-    CACHE_['evs'][hash] = pickle.dumps(packet, PPROT)
+    if hash not in CACHE_['evs']:
+        CACHE_['evs'][hash] = []
+    CACHE_['evs'][hash].append(pickle.dumps(packet, PPROT))
     write_out()
 
 def insert_test( hash, random, seq ):
@@ -282,6 +286,7 @@ def write_out():
     import time
     try:
         while os.path.exists(LOCKFILE):
+            sys.stderr.write("Waiting on lock...\n")
             time.sleep(0.01)
 
         with open(LOCKFILE, 'w+') as lock:
