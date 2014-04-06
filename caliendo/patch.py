@@ -115,7 +115,7 @@ def execute_side_effect(side_effect=UNDEFINED, args=UNDEFINED, kwargs=UNDEFINED)
     else:
         raise Exception("Caliendo doesn't know what to do with your side effect. {0}".format(side_effect))
 
-def get_replacement_method(method_to_patch, side_effect=UNDEFINED, rvalue=UNDEFINED, ignore=UNDEFINED, callback=UNDEFINED, context=UNDEFINED):
+def get_replacement_method(method_to_patch, side_effect=UNDEFINED, rvalue=UNDEFINED, ignore=UNDEFINED, callback=UNDEFINED, context=UNDEFINED, subsequent_rvalue=UNDEFINED):
     """
     Returns the method to be applied in place of an original method. This method either executes a side effect, returns an rvalue, or implements caching in place of the method_to_patch
 
@@ -125,6 +125,7 @@ def get_replacement_method(method_to_patch, side_effect=UNDEFINED, rvalue=UNDEFI
     :param caliendo.Ignore ignore: The parameters that should be ignored when determining cachekeys. These are typically the dynamic values such as datetime.datetime.now() or a setting from an environment specific file.
     :param function callback: A pickleable callback to execute when the patched method is called and the cache is hit. (has to have been cached the first time).
     :param caliendo.hooks.Context ctxt: The context this patch should be executed under. Generally reserved for internal use. The vast majority of use cases should leave this parameter alone.
+    :param mixed subsequent_rvalue: If passed; this will be the return value each time this method is run regardless of what is returned when it is initially cached. Caching for this method will be skipped. This is useful when the method returns something unpickleable but we still need to stub it out.
 
     :rtype: function
     :returns: The function to replace all references to method_to_patch with.
@@ -132,10 +133,13 @@ def get_replacement_method(method_to_patch, side_effect=UNDEFINED, rvalue=UNDEFI
     def patch_with(*args, **kwargs):
         if side_effect != UNDEFINED:
             return execute_side_effect(side_effect, args, kwargs)
-        return rvalue if rvalue != UNDEFINED else cache(method_to_patch, args=args, kwargs=kwargs, ignore=ignore, call_stack=context.stack, callback=callback)
+        if rvalue != UNDEFINED:
+            return rvalue
+
+        return cache(method_to_patch, args=args, kwargs=kwargs, ignore=ignore, call_stack=context.stack, callback=callback, subsequent_rvalue=subsequent_rvalue)
     return patch_with
 
-def get_patched_test(import_path, unpatched_test, rvalue=UNDEFINED, side_effect=UNDEFINED, context=UNDEFINED, ignore=UNDEFINED, callback=UNDEFINED):
+def get_patched_test(import_path, unpatched_test, rvalue=UNDEFINED, side_effect=UNDEFINED, context=UNDEFINED, ignore=UNDEFINED, callback=UNDEFINED, subsequent_rvalue=UNDEFINED):
     """
     Defines a method for the decorator to return. The return value is the patched version of the original test. The original test will be run in the context for the patch, and the patched methods will be restored to their original state when the context's depth has counted down to 0
 
@@ -146,6 +150,7 @@ def get_patched_test(import_path, unpatched_test, rvalue=UNDEFINED, side_effect=
     :param caliendo.hooks.Context ctxt: The context this patch should be executed under. Generally reserved for internal use. The vast majority of use cases should leave this parameter alone.
     :param caliendo.Ignore ignore: The parameters that should be ignored when determining cachekeys. These are typically the dynamic values such as datetime.datetime.now() or a setting from an environment specific file.
     :param function callback: A pickleable callback to execute when the patched method is called and the cache is hit. (has to have been cached the first time).
+    :param mixed subsequent_rvalue: If passed; this will be the return value each time this method is run regardless of what is returned when it is initially cached. Caching for this method will be skipped. This is useful when the method returns something unpickleable but we still need to stub it out.
 
     """
     def get_or_store_backup_method(vessel, obj, callable_name):
@@ -177,7 +182,8 @@ def get_patched_test(import_path, unpatched_test, rvalue=UNDEFINED, side_effect=
                                             rvalue=rvalue,
                                             ignore=ignore,
                                             callback=callback,
-                                            context=context)
+                                            context=context,
+                                            subsequent_rvalue=subsequent_rvalue)
 
         to_patch = find_modules_importing(import_path, context.module)
 
@@ -222,7 +228,7 @@ def get_context(method):
     else:
         return Context(method)
 
-def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED, callback=UNDEFINED, ctxt=UNDEFINED):
+def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED, callback=UNDEFINED, ctxt=UNDEFINED, subsequent_rvalue=UNDEFINED):
     """
     Patches an attribute of a module referenced on import_path with a decorated
     version that will use the caliendo cache if rvalue is None. Otherwise it will
@@ -238,6 +244,7 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED
     :param caliendo.Ignore ignore: Arguments to ignore. The first element should be a list of positional arguments. The second should be a list of keys for keyword arguments.
     :param function callback: A pickleable callback to execute when the patched method is called and the cache is hit. (has to have been cached the first time).
     :param caliendo.hooks.Context ctxt: The context this patch should be executed under. Generally reserved for internal use. The vast majority of use cases should leave this parameter alone.
+    :param mixed subsequent_rvalue: If passed; this will be the return value each time this method is run regardless of what is returned when it is initially cached. Caching for this method will be skipped. This is useful when the method returns something unpickleable but we still need to stub it out.
 
     """
     def patch_test(unpatched_test):
@@ -265,7 +272,8 @@ def patch(import_path, rvalue=UNDEFINED, side_effect=UNDEFINED, ignore=UNDEFINED
                                         side_effect=side_effect,
                                         context=context,
                                         ignore=ignore,
-                                        callback=callback)
+                                        callback=callback,
+                                        subsequent_rvalue=subsequent_rvalue)
 
         patched_test.__context = context
         patched_test.__name__ = context.name
