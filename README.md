@@ -306,7 +306,11 @@ Even though `method_with_callback` is only called the very first time the test i
 
 There are some downsides. Arguments must be pickleable. Furthermore; runtime resources such as database connections passed via closures will be lost. One workaround is to establish those in the callback at runtime.
 
-### Ignore Dynamic Arguments to Patched Functions
+### Ignore and subsequent_rvalue: Patching runtime resources and dynamic parameters. 
+
+There are two situations it's particularly useful to ignore certain input parameters and return values.
+ * The input parameters or return value changes from one call to the next (even though the call is in the same order) or
+ * The input parameters or return value is a runtime resource (like a database cursor) and, hence, is not available when calls to the cache are made rather than to the services. 
 
 In the event you must pass a dynamic argument to a patched method you can use the `Ignore` class to specify which paramters should be ignored.
 
@@ -326,6 +330,29 @@ class ApiTest(unittest.TestCase):
 ```
 
 The above test will always pass, even though positional args 0 and 1 change, as well as the current_time keyword argument.
+
+Since the value is `Ignore`'d it won't be pickled and hashed to for the CallDescriptor key. This means you can use `Ignore` to skip pickling input parameters when the additional information is not needed to make the CallDescriptor hash unique. 
+
+When you need to avoid referencing a runtime resource when the cache is called (so the resource doesn't exist) you can use `subsequent_rvalue`. This is a parameter to the `caliendo.patch.patch` call.
+
+```python
+from caliendo import Ignore
+from my_database_client import find_with_cursor
+from my_application import from_cursor_to_list_of_models
+
+class ApiTest(unittest.TestCase):
+
+    @patch('my_database_client.find_with_cursor', subsequent_rvalue=None)
+    @patch('my_application.from_cursor_to_list_of_models', ignore=Ignore(args=[0]))
+    def test_models(self):
+        cursor = find_with_cursor('my query goes here')
+        models = from_cursor_to_list_of_models(cursor)
+        # Assert stuff about the models here.
+```
+
+In the above example we use `Ignore` along with subsequent_rvalue to allow us to call our services to return models in such a way that we avoid using runtime resources in our tests entirely (after the first run).
+
+Here; `find_with_cursor` will return a cursor the first time it's called. Each subsequent time it will return `None`.
 
 ### Purge
 

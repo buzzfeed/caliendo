@@ -44,6 +44,8 @@ def objwalk(obj, path=(), memo=None):
         iterator = enumerate
     elif hasattr( obj, '__class__' ) and hasattr( obj, '__dict__' ) and type(obj) not in primitives: # If type(obj) == <instance>
         iterator = class_iterator
+    elif hasattr(obj, '__iter__'):
+        obj = [o for o in obj]
     else:
         pass
     if iterator:
