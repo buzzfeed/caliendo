@@ -351,7 +351,7 @@ def Facade( some_instance=None, exclusion_list=[], cls=None, args=tuple(), kwarg
 
 
 
-def cache(handle=lambda *args, **kwargs: None, args=UNDEFINED, kwargs=UNDEFINED, ignore=UNDEFINED, call_stack=UNDEFINED, callback=UNDEFINED):
+def cache(handle=lambda *args, **kwargs: None, args=UNDEFINED, kwargs=UNDEFINED, ignore=UNDEFINED, call_stack=UNDEFINED, callback=UNDEFINED, subsequent_rvalue=UNDEFINED):
     """
     Store a call descriptor
 
@@ -361,6 +361,7 @@ def cache(handle=lambda *args, **kwargs: None, args=UNDEFINED, kwargs=UNDEFINED,
     :param tuple(list(int), list(str)) ignore: A tuple of arguments to ignore. The first element should be a list of positional arguments. The second should be a list of keys for keyword arguments.
     :param caliendo.hooks.CallStack call_stack: The stack of calls thus far for this patch.
     :param function callback: The callback function to execute each time there is a cache hit for 'handle' (actually mechanism is more complicated, but this is what it boils down to)
+    :param mixed subsequent_rvalue: If passed; this will be the return value each time this method is run regardless of what is returned when it is initially cached. Caching for this method will be skipped. This is useful when the method returns something unpickleable but we still need to stub it out.
 
     :returns: The value of handle(*args, **kwargs)
     """
@@ -394,12 +395,18 @@ def cache(handle=lambda *args, **kwargs: None, args=UNDEFINED, kwargs=UNDEFINED,
         returnval = prompt.modify_cached_value(cd.returnval,
                                                calling_method=display_name,
                                                calling_test='')
+
+    if cd and subsequent_rvalue != UNDEFINED:
+        return subsequent_rvalue
+    elif subsequent_rvalue != UNDEFINED:
+        original_rvalue = returnval
+        returnval = subsequent_rvalue
+
     if not cd or modify_or_replace != 'no':
         if isinstance(handle, types.MethodType):
             args = list(args)
             args[0] = util.serialize_item(args[0])
             args = tuple(args)
-
 
         cd = call_descriptor.CallDescriptor( hash      = call_hash,
                                              stack     = trace_string,
@@ -418,8 +425,10 @@ def cache(handle=lambda *args, **kwargs: None, args=UNDEFINED, kwargs=UNDEFINED,
             call_stack.add_hook(Hook(call_descriptor_hash=cd.hash,
                                      callback=callback))
 
-
-    return cd.returnval
+    if subsequent_rvalue == UNDEFINED:
+        return cd.returnval
+    else:
+        return original_rvalue
 
 def patch(*args, **kwargs):
     """
