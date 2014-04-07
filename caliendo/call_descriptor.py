@@ -44,7 +44,9 @@ class CallDescriptorBuffer:
     except:
         args               = pickling.pickle_with_weak_refs(tuple([]))
 
+
     returnval              = pickling.pickle_with_weak_refs(returnval)
+
 
     self.__data            = "".join([ methodname, args, returnval, stack ])
     self.__methodname_len  = len( methodname )

@@ -44,7 +44,7 @@ def objwalk(obj, path=(), memo=None):
         iterator = enumerate
     elif hasattr( obj, '__class__' ) and hasattr( obj, '__dict__' ) and type(obj) not in primitives: # If type(obj) == <instance>
         iterator = class_iterator
-    elif hasattr(obj, '__iter__'):
+    elif hasattr(obj, '__iter__') or isinstance(obj, types.GeneratorType):
         obj = [o for o in obj]
     else:
         pass
@@ -137,10 +137,12 @@ def pickle_with_weak_refs( o ):
 
     :rtype str: The pickled object
     """
+    if isinstance(o, types.GeneratorType):
+        o = [i for i in o]
     walk = dict([ (path,val) for path, val in objwalk(o)])
     for path, val in walk.items():
         if len(path) > MAX_DEPTH or is_lambda(val):
             truncate_attr_at_path(o, path)
-        if type(val) == weakref.ref:
+        if isinstance(val, weakref.ref):
             setattr_at_path( o, path, val() ) # Resolve weak references
     return pickle.dumps(o)
