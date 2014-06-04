@@ -86,6 +86,7 @@ There are a lot of ways to set environment variables in your application. On our
     import sys
     os.environ['CALIENDO_CACHE_PREFIX'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'caliendo')
     os.environ['PURGE_CALIENDO'] = 'True'
+    os.environ['USE_CALIENDO'] = 'True' # Important!
 
     ```
 
