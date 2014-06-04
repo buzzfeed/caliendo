@@ -28,6 +28,9 @@ from foobar import bazbiz
 from api import foobarfoobiz, foobarfoobaz, foobar, foobiz
 from test.api.services.bar import find as find_bar
 from test.api.myclass import MyClass
+        
+def foo_for_testing_ignore(a,b,c=1,d=None):
+    return a,b,c,d
 
 recache()
 
@@ -1181,6 +1184,50 @@ class  CaliendoTestCase(unittest.TestCase):
         assert b == c
         assert c != d
         assert e != d
+
+    def test_ignored_args_arent_truncated(self):
+
+        @patch('test.caliendo_test.foo_for_testing_ignore', ignore=Ignore(args=[0],kwargs=['c']))
+        def ignore_0_and_c():
+            return foo_for_testing_ignore(1,2,3,4)
+        
+        @patch('test.caliendo_test.foo_for_testing_ignore', ignore=Ignore(args=[], kwargs=['d']))
+        def ignore_d_only():
+            return foo_for_testing_ignore(1,2,3,4)
+        
+        @patch('test.caliendo_test.foo_for_testing_ignore', ignore=Ignore(args=[0],kwargs=['c']))
+        def ignore_0_and_c_with_objects():
+            return foo_for_testing_ignore({'d': 4},{'c': 3},{'b': 2},{'a': 1})
+        
+        @patch('test.caliendo_test.foo_for_testing_ignore', ignore=Ignore(args=[], kwargs=['d']))
+        def ignore_d_only_with_objects():
+            return foo_for_testing_ignore({'d': 4},{'c': 3},{'b': 2},{'a': 1})
+
+        one, two, three, four = ignore_0_and_c()
+        self.assertEquals(one, 1)
+        self.assertEquals(two, 2)
+        self.assertEquals(three, 3)
+        self.assertEquals(four, 4)
+        
+        one, two, three, four = ignore_d_only()
+        self.assertEquals(one, 1)
+        self.assertEquals(two, 2)
+        self.assertEquals(three, 3)
+        self.assertEquals(four, 4)
+
+        d, c, b, a = ignore_0_and_c_with_objects()
+        self.assertEquals(d, {'d': 4})
+        self.assertEquals(c, {'c': 3})
+        self.assertEquals(b, {'b': 2})
+        self.assertEquals(a, {'a': 1})
+
+        d, c, b, a = ignore_d_only_with_objects()
+        self.assertEquals(d, {'d': 4})
+        self.assertEquals(c, {'c': 3})
+        self.assertEquals(b, {'b': 2})
+        self.assertEquals(a, {'a': 1})
+
+
 
     def test_call_hooks(self):
         with open(myfile.name, 'w+') as fp:

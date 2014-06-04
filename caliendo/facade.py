@@ -40,17 +40,22 @@ def should_exclude(type_or_instance, exclusion_list):
 def get_hash(args, trace_string, kwargs, ignore=UNDEFINED):
     counter_value = counter.get_from_trace_for_cache(trace_string)
 
+    args_with_ignores = [] 
+    kwargs_with_ignores = {}
     if ignore != UNDEFINED:
-        args = list(args)
-        for i in ignore.args:
-            args[i] = None
-        for k in ignore.kwargs:
-            kwargs[k] = None
-        args = tuple(args)
+        for i, arg in enumerate(args):
+            args_with_ignores.append(None if i in ignore.args else args[i])
+        for k, v in kwargs.iteritems():
+            kwargs_with_ignores[k] = None if k in ignore.kwargs else v
 
-    return sha1((str(util.serialize_args(args)) + "\n" +
+        args_with_ignores = tuple(args_with_ignores)
+    else:
+        args_with_ignores = args
+        kwargs_with_ignores = kwargs
+
+    return sha1((str(util.serialize_args(args_with_ignores)) + "\n" +
                               str(counter_value) + "\n" +
-                              str(util.serialize_item(kwargs)) + "\n" +
+                              str(util.serialize_item(kwargs_with_ignores)) + "\n" +
                               trace_string + "\n" )).hexdigest()
 
 class LazyBones:
