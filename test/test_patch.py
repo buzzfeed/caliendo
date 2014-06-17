@@ -59,3 +59,4 @@ class PatchTestCase(unittest.TestCase):
                 c.bar()
 
         run_test_n_times(test, 3)
+
