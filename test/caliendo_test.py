@@ -29,7 +29,7 @@ from api import foobarfoobiz, foobarfoobaz, foobar, foobiz
 from test.api.services.bar import find as find_bar
 from test.api.myclass import MyClass
         
-def foo_for_testing_ignore(a,b,c=1,d=None):
+def foo_for_t_esting_ignore(a,b,c=1,d=None):
     return a,b,c,d
 
 recache()
@@ -1188,21 +1188,21 @@ class  CaliendoTestCase(unittest.TestCase):
 
     def test_ignored_args_arent_truncated(self):
 
-        @patch('test.caliendo_test.foo_for_testing_ignore', ignore=Ignore(args=[0],kwargs=['c']))
+        @patch('test.caliendo_test.foo_for_t_esting_ignore', ignore=Ignore(args=[0],kwargs=['c']))
         def ignore_0_and_c():
-            return foo_for_testing_ignore(1,2,3,4)
+            return foo_for_t_esting_ignore(1,2,3,4)
         
-        @patch('test.caliendo_test.foo_for_testing_ignore', ignore=Ignore(args=[], kwargs=['d']))
+        @patch('test.caliendo_test.foo_for_t_esting_ignore', ignore=Ignore(args=[], kwargs=['d']))
         def ignore_d_only():
-            return foo_for_testing_ignore(1,2,3,4)
+            return foo_for_t_esting_ignore(1,2,3,4)
         
-        @patch('test.caliendo_test.foo_for_testing_ignore', ignore=Ignore(args=[0],kwargs=['c']))
+        @patch('test.caliendo_test.foo_for_t_esting_ignore', ignore=Ignore(args=[0],kwargs=['c']))
         def ignore_0_and_c_with_objects():
-            return foo_for_testing_ignore({'d': 4},{'c': 3},{'b': 2},{'a': 1})
+            return foo_for_t_esting_ignore({'d': 4},{'c': 3},{'b': 2},{'a': 1})
         
-        @patch('test.caliendo_test.foo_for_testing_ignore', ignore=Ignore(args=[], kwargs=['d']))
+        @patch('test.caliendo_test.foo_for_t_esting_ignore', ignore=Ignore(args=[], kwargs=['d']))
         def ignore_d_only_with_objects():
-            return foo_for_testing_ignore({'d': 4},{'c': 3},{'b': 2},{'a': 1})
+            return foo_for_t_esting_ignore({'d': 4},{'c': 3},{'b': 2},{'a': 1})
 
         one, two, three, four = ignore_0_and_c()
         self.assertEquals(one, 1)
@@ -1247,7 +1247,7 @@ class  CaliendoTestCase(unittest.TestCase):
                 test(i * 0.1)
 
         with open(myfile.name) as f:
-            self.assertEquals(f.read(), '3')
+            self.assertEquals(f.read(), '2')
 
     def test_load_and_save_stack(self):
         cs = CallStack(self.test_load_and_save_stack)

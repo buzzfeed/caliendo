@@ -6,7 +6,7 @@ from caliendo.patch import patch_lazy
 
 from test.api.myclass import InheritsFooAndBaz, LazyLoadsBar
 
-def run_test_n_times(test, n):
+def run_t_est_n_times(test, n):
     for i in range(n):
         pid = os.fork()
         if pid:
@@ -27,7 +27,7 @@ class PatchTestCase(unittest.TestCase):
             assert c.foo() == 'bar'
             assert c.baz() == 'bar'
 
-        run_test_n_times(test, 3)
+        run_t_est_n_times(test, 3)
 
     def test_patch_lazy_loaded_with_rvalue(self):
 
@@ -36,7 +36,7 @@ class PatchTestCase(unittest.TestCase):
             c = LazyLoadsBar()
             assert c.bar() == 'foo'
 
-        run_test_n_times(test, 3)
+        run_t_est_n_times(test, 3)
 
     def test_patch_lazy_loaded_with_side_effects(self):
 
@@ -48,7 +48,7 @@ class PatchTestCase(unittest.TestCase):
             c = LazyLoadsBar()
             c.bar(True)
 
-        run_test_n_times(test, 1)
+        run_t_est_n_times(test, 1)
 
     def test_patch_lazy_loaded_with_exception(self):
 
@@ -58,5 +58,5 @@ class PatchTestCase(unittest.TestCase):
             with self.assertRaisesRegexp(Exception, r"kablooey!"):
                 c.bar()
 
-        run_test_n_times(test, 3)
+        run_t_est_n_times(test, 3)
 
