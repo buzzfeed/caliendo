@@ -25,3 +25,5 @@ class Parameters(object):
         if kwargs != UNDEFINED:
             self.kwargs = kwargs
 
+class CaliendoException(Exception):
+    pass

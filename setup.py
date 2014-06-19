@@ -9,7 +9,7 @@ except ImportError:
 
 setup(
     name='caliendo',
-    version='2.1.9',
+    version='2.1.10',
     packages=find_packages(),
     author='Andrew Kelleher',
     author_email='andrew.kelleher@buzzfeed.com',
@@ -18,7 +18,8 @@ setup(
     test_suite='test.all_tests',
     install_requires=[
         'mock==1.0.0',
-        'dill==0.2b1'
+        'dill==0.2b1',
+        'portalocker==0.5.1',
     ],
     url='http://www.github.com/buzzfeed/caliendo',
     classifiers=[

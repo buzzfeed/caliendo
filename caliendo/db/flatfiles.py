@@ -3,8 +3,10 @@ import sys
 
 import os
 import dill as pickle
+import portalocker
 
 from caliendo.logger import get_logger
+from caliendo import CaliendoException
 
 logger = get_logger(__name__)
 
@@ -17,6 +19,10 @@ PPROT = pickle.HIGHEST_PROTOCOL
 
 LOCKFILE = os.path.join(ROOT, 'lock')
 LOG_FILEPATH = os.path.join(ROOT, 'used')
+
+if not os.path.exists(LOCKFILE):
+    open(LOCKFILE, 'w+')
+
 
 def record_used(kind, hash):
     """
@@ -284,18 +290,19 @@ def delete_stack(stack):
 def write_out():
     global CACHE_
     import time
-    try:
-        while os.path.exists(LOCKFILE):
-            sys.stderr.write("Waiting on lock...\n")
-            time.sleep(0.01)
-
-        with open(LOCKFILE, 'w+') as lock:
-            with open(CACHE, 'w+') as f:
-                pickle.dump(CACHE_, f, pickle.HIGHEST_PROTOCOL)
-    finally:
-        if os.path.exists(LOCKFILE):
-            os.unlink(LOCKFILE)
-        load_cache(True)
+    with open(LOCKFILE, 'r+') as lock:
+        for t in range(10):
+            try:
+                portalocker.lock(lock, portalocker.LOCK_EX | portalocker.LOCK_NB) 
+                load_cache(True)
+                with open(CACHE, 'w+') as f:
+                    pickle.dump(CACHE_, f, pickle.HIGHEST_PROTOCOL)
+                return True
+            except portalocker.portlocker.LockException, e:
+                logger.warning("Waiting for lock...")
+                time.sleep(0.5)
+                continue 
+    raise CaliendoException("Couldn't acquire lock to write cache") 
 
 def load_cache(reload=False):
     global CACHE_
