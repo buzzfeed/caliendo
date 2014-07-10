@@ -377,8 +377,12 @@ def cache(handle=lambda *args, **kwargs: None, args=UNDEFINED, kwargs=UNDEFINED,
     if not USE_CALIENDO:
         return handle(*args, **kwargs)
 
+     
+    filtered_args = ignore.filter_args(args) if ignore is not UNDEFINED else args
+    filtered_kwargs = ignore.filter_kwargs(kwargs) if ignore is not UNDEFINED else args
+
     trace_string      = util.get_stack(handle.__name__)
-    call_hash         = get_hash(args, trace_string, kwargs, ignore)
+    call_hash         = get_hash(filtered_args, trace_string, filtered_kwargs, ignore)
     cd                = call_descriptor.fetch(call_hash)
     modify_or_replace = 'no'
 
@@ -409,16 +413,16 @@ def cache(handle=lambda *args, **kwargs: None, args=UNDEFINED, kwargs=UNDEFINED,
 
     if not cd or modify_or_replace != 'no':
         if isinstance(handle, types.MethodType):
-            args = list(args)
-            args[0] = util.serialize_item(args[0])
-            args = tuple(args)
+            filtered_args = list(filtered_args)
+            filtered_args[0] = util.serialize_item(filtered_args[0])
+            filtered_args = tuple(filtered_args)
 
         cd = call_descriptor.CallDescriptor( hash      = call_hash,
                                              stack     = trace_string,
                                              method    = handle.__name__,
                                              returnval = returnval,
-                                             args      = args,
-                                             kwargs    = kwargs )
+                                             args      = filtered_args,
+                                             kwargs    = filtered_kwargs )
 
         cd.save()
 
